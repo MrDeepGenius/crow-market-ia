@@ -54,13 +54,25 @@
     },
     "wallet_balance": {
       "type": "number",
-      "description": "Saldo en USDT (TRC20) disponible en la billetera para pagar planes y VIP.",
+      "description": "Saldo en USDT (TRC20) disponible en la billetera para pagar planes, LC y VIP.",
       "default": 0
     },
     "vip_unlocked": {
       "type": "boolean",
       "description": "Pase VIP Total activo: desbloquea el 100% de las comisiones de reventa de licencias.",
       "default": false
+    },
+    "lc_unlocked_level": {
+      "type": "string",
+      "description": "Nivel de Licencia Crow desbloqueado por el afiliado para reventa. none = sin nivel.",
+      "enum": [
+        "none",
+        "bronce",
+        "plata",
+        "oro",
+        "diamante"
+      ],
+      "default": "none"
     },
     "withdrawal_wallet_address": {
       "type": "string",

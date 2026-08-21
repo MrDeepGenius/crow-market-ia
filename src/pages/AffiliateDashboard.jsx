@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import {
-  LayoutDashboard, Wand2, Crown, Bot, Package, History, Wallet, Settings,
+  LayoutDashboard, Wand2, Crown, Bot, Package, History, Wallet, Settings, Store,
 } from "lucide-react";
 import DashboardShell from "@/components/dashboard/DashboardShell";
 import AffiliateKpis from "@/components/affiliate/AffiliateKpis";
@@ -10,6 +10,7 @@ import SalesCopilot from "@/components/affiliate/SalesCopilot";
 import ProductsAffiliationTable from "@/components/affiliate/ProductsAffiliationTable";
 import SalesHistory from "@/components/affiliate/SalesHistory";
 import WithdrawalPanel from "@/components/affiliate/WithdrawalPanel";
+import AffiliateMarketplace from "@/components/affiliate/AffiliateMarketplace";
 
 const navItems = [
   { id: "home", label: "Inicio", icon: LayoutDashboard },
@@ -17,6 +18,7 @@ const navItems = [
   { id: "licencia", label: "Licencia Crow", icon: Crown },
   { id: "copiloto", label: "Copiloto IA", icon: Bot },
   { id: "productos", label: "Productos", icon: Package },
+  { id: "marketplace", label: "Marketplace", icon: Store },
   { id: "historial", label: "Historial", icon: History },
   { id: "wallet", label: "Wallet & Retiros", icon: Wallet },
   { id: "settings", label: "Configuración", icon: Settings },
@@ -44,6 +46,8 @@ function SectionRenderer({ active, onNavigate }) {
       return <SalesCopilot />;
     case "productos":
       return <ProductsAffiliationTable onCreateLanding={() => onNavigate("landings")} />;
+    case "marketplace":
+      return <AffiliateMarketplace onCreateLanding={() => onNavigate("landings")} />;
     case "historial":
       return <SalesHistory />;
     case "wallet":

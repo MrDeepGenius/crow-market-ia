@@ -9,7 +9,7 @@ function Panel({ children, className = "" }) {
   return <div className={`glass rounded-2xl p-5 ${className}`}>{children}</div>;
 }
 
-// Licencias Creador que el afiliado puede revender.
+// Licencias Creador que el afiliado puede revender. unlock = precio para desbloquear el nivel.
 const LC_LICENSES = [
   { id: "bronce", name: "Bronce", price: 30, unlock: 15, color: "from-amber-700/30 to-amber-600/10 text-amber-300" },
   { id: "plata", name: "Plata", price: 50, unlock: 25, color: "from-slate-300/30 to-slate-400/10 text-slate-200" },
@@ -18,22 +18,17 @@ const LC_LICENSES = [
 ];
 
 const VIP_PRICE = 115;
-const LEVEL_ORDER = ["bronce", "plata", "oro", "diamante"];
-// Nivel máximo desbloqueado por el afiliado (sin VIP). Mock: bronce.
-const UNLOCKED_LEVEL = "bronce";
-
-function isAuthorized(licenseId, vipUnlocked) {
-  if (vipUnlocked) return true;
-  const idx = LEVEL_ORDER.indexOf(licenseId);
-  const unlockedIdx = LEVEL_ORDER.indexOf(UNLOCKED_LEVEL);
-  return idx <= unlockedIdx;
-}
+const LEVEL_ORDER = ["none", "bronce", "plata", "oro", "diamante"];
 
 export default function CrowLicenseModule() {
   const { user, checkUserAuth } = useAuth();
   const vipUnlocked = !!user?.vip_unlocked;
   const balance = Number(user?.wallet_balance || 0);
-  const [buying, setBuying] = useState(false);
+  const currentLevel = user?.lc_unlocked_level || "none";
+  const currentIdx = LEVEL_ORDER.indexOf(currentLevel);
+  const [buying, setBuying] = useState(null); // tier id en curso
+
+  const isAuthorized = (licenseId) => vipUnlocked || LEVEL_ORDER.indexOf(licenseId) <= currentIdx;
 
   const copyInvite = (name) => {
     navigator.clipboard?.writeText(`https://crowmarket.ai/invite/creator/AFF8421X/${name.toLowerCase()}`);
@@ -41,9 +36,9 @@ export default function CrowLicenseModule() {
   };
 
   const handleBuyVip = async () => {
-    setBuying(true);
+    setBuying("vip");
     try {
-      const res = await base44.functions.invoke("purchaseVip", {});
+      await base44.functions.invoke("purchaseVip", {});
       toast({
         title: "Pase VIP activado",
         description: `Se debitaron $${VIP_PRICE} USDT. ¡Desbloqueaste el 100% de las comisiones!`,
@@ -56,7 +51,27 @@ export default function CrowLicenseModule() {
         description: err?.message || err?.data?.error || "Saldo insuficiente.",
       });
     } finally {
-      setBuying(false);
+      setBuying(null);
+    }
+  };
+
+  const handleUnlock = async (lic) => {
+    setBuying(lic.id);
+    try {
+      const res = await base44.functions.invoke("purchaseLicense", { tier: lic.id });
+      toast({
+        title: `Licencia ${lic.name} desbloqueada`,
+        description: `Se debitaron $${lic.unlock} USDT. Ya puedes revender ${lic.name} y niveles inferiores.`,
+      });
+      checkUserAuth();
+    } catch (err) {
+      toast({
+        variant: "destructive",
+        title: "No se pudo desbloquear",
+        description: err?.message || err?.data?.error || "Saldo insuficiente.",
+      });
+    } finally {
+      setBuying(null);
     }
   };
 
@@ -72,11 +87,19 @@ export default function CrowLicenseModule() {
           <div className="flex-1">
             <h3 className="font-semibold">Módulo Licencia Crow — Bono LC & Invita Creadores</h3>
             <p className="text-sm text-muted-foreground mt-1 leading-relaxed">
-              Reventa Licencias Creador y gana comisiones por cada creador que invites. Regla de reventa: sólo puedes
-              vender licencias de nivel <strong className="text-foreground">igual o inferior</strong> al que tienes desbloqueado.
+              Compra cada nivel con el saldo de tu billetera y desbloquea la reventa de esa licencia y todas las
+              inferiores. Sólo puedes vender licencias de nivel <strong className="text-foreground">igual o inferior</strong> al desbloqueado.
               <br />
-              <span className="text-xs">Bronce $30 · Plata $50 · Oro $100 · Diamante $200</span>
+              <span className="text-xs">Desbloqueo: Bronce $15 · Plata $25 · Oro $50 · Diamante $100</span>
             </p>
+            <div className="mt-3 flex flex-wrap gap-2 text-xs">
+              <span className="px-2.5 py-1 rounded-full bg-secondary/60 border border-border">
+                Saldo: <strong className="text-primary">${balance.toFixed(2)} USDT</strong>
+              </span>
+              <span className="px-2.5 py-1 rounded-full bg-secondary/60 border border-border">
+                Nivel actual: <strong className="text-foreground">{vipUnlocked ? "VIP (todos)" : currentLevel === "none" ? "Sin nivel" : currentLevel}</strong>
+              </span>
+            </div>
           </div>
         </div>
       </Panel>
@@ -93,20 +116,20 @@ export default function CrowLicenseModule() {
               <p className="text-xs text-muted-foreground">
                 {vipUnlocked
                   ? "Activo: desbloqueaste el 100% de las comisiones."
-                  : `Desbloquea el 100% de las comisiones. Se paga con tu saldo de billetera (${balance.toFixed(2)} USDT).`}
+                  : `Desbloquea el 100% de las comisiones. Se paga con tu saldo (${balance.toFixed(2)} USDT).`}
               </p>
             </div>
           </div>
           <Button
             className={vipUnlocked ? "bg-amber-400 text-black hover:bg-amber-300" : ""}
-            disabled={vipUnlocked || buying || balance < VIP_PRICE}
+            disabled={vipUnlocked || buying === "vip" || balance < VIP_PRICE}
             onClick={handleBuyVip}
           >
             {vipUnlocked ? (
               <>
                 <Check className="w-4 h-4 mr-1.5" /> VIP Activo
               </>
-            ) : buying ? (
+            ) : buying === "vip" ? (
               <>
                 <Loader2 className="w-4 h-4 mr-1.5 animate-spin" /> Procesando...
               </>
@@ -120,10 +143,11 @@ export default function CrowLicenseModule() {
       {/* Grilla de desbloqueo progresivo */}
       <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
         {LC_LICENSES.map((lic) => {
-          const authorized = isAuthorized(lic.id, vipUnlocked);
-          const isCurrent = !vipUnlocked && UNLOCKED_LEVEL === lic.id;
+          const authorized = isAuthorized(lic.id);
+          const isCurrent = !vipUnlocked && currentLevel === lic.id;
+          const canAfford = balance >= lic.unlock;
           return (
-            <Panel key={lic.id} className={`relative ${authorized ? "" : "opacity-80"}`}>
+            <Panel key={lic.id} className={`relative ${authorized ? "" : "opacity-90"}`}>
               <div className={`absolute -top-6 -right-6 w-20 h-20 rounded-full bg-gradient-to-br ${lic.color} blur-lg`} />
               <div className="relative">
                 <div className="flex items-center justify-between">
@@ -131,11 +155,13 @@ export default function CrowLicenseModule() {
                   {isCurrent && (
                     <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-primary text-primary-foreground">ACTUAL</span>
                   )}
+                  {authorized && !isCurrent && (
+                    <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-green-400/15 text-green-400">DESBLOQUEADO</span>
+                  )}
                 </div>
                 <p className="text-lg font-bold mt-1">${lic.price}</p>
-                <p className="text-xs text-muted-foreground mt-0.5">Desbloquea pagando ${lic.unlock} USD</p>
-                <p className="text-[11px] text-muted-foreground mt-1">
-                  {authorized ? "Reventa habilitada" : "Requiere licencia superior o Pase VIP"}
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  {authorized ? "Reventa habilitada" : `Desbloquea pagando $${lic.unlock} USD`}
                 </p>
 
                 <div className="mt-3">
@@ -144,12 +170,27 @@ export default function CrowLicenseModule() {
                       <Copy className="w-3.5 h-3.5 mr-1.5" /> Copiar Link Invitación
                     </Button>
                   ) : (
-                    <div className="w-full flex items-center justify-center gap-2 h-9 rounded-xl bg-secondary/40 border border-border text-xs text-muted-foreground">
-                      <Lock className="w-3.5 h-3.5 text-primary" />
-                      Bloqueado · Pase VIP (${VIP_PRICE})
-                    </div>
+                    <Button
+                      size="sm"
+                      className="w-full"
+                      disabled={buying === lic.id || !canAfford}
+                      onClick={() => handleUnlock(lic)}
+                    >
+                      {buying === lic.id ? (
+                        <>
+                          <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" /> Procesando...
+                        </>
+                      ) : (
+                        <>
+                          <Lock className="w-3.5 h-3.5 mr-1.5" /> Desbloquear (${lic.unlock})
+                        </>
+                      )}
+                    </Button>
                   )}
                 </div>
+                {!authorized && !canAfford && (
+                  <p className="mt-2 text-[11px] text-destructive text-center">Saldo insuficiente</p>
+                )}
               </div>
             </Panel>
           );

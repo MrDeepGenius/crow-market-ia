@@ -3,17 +3,20 @@ import { Copy, Wand2, Package } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "@/components/ui/use-toast";
 import { SAMPLE_PRODUCTS } from "@/data/products";
+import { useAuth } from "@/lib/AuthContext";
 
 function Panel({ children, className = "" }) {
   return <div className={`glass rounded-2xl p-5 ${className}`}>{children}</div>;
 }
 
 export default function ProductsAffiliationTable({ onCreateLanding }) {
+  const { user } = useAuth();
+  const affiliateCode = user?.id ? user.id.slice(0, 8).toUpperCase() : "AFFILIATE";
   const products = SAMPLE_PRODUCTS.filter((p) => p.affiliate);
 
   const copyLink = (p) => {
-    navigator.clipboard?.writeText(`https://crowmarket.ai/r/AFF8421X/${p.id}`);
-    toast({ title: "Link copiado", description: `Link de afiliado de ${p.name} copiado.` });
+    navigator.clipboard?.writeText(`https://crowmarket.ai/r/${affiliateCode}/${p.id}`);
+    toast({ title: "Link copiado", description: `Link de afiliado de ${p.name} copiado (código ${affiliateCode}).` });
   };
 
   return (
