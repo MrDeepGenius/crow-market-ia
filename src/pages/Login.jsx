@@ -48,7 +48,8 @@ export default function Login() {
     }
   };
 
-  const handleGoogle = () => base44.auth.loginWithProvider("google", returnTo);
+  const handleGoogle = () =>
+    base44.auth.loginWithProvider("google", returnTo !== "/" ? returnTo : "/dashboard");
 
   return (
     <AuthLayout

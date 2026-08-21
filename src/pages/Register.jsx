@@ -93,7 +93,13 @@ export default function Register() {
     }
   };
 
-  const handleGoogle = () => base44.auth.loginWithProvider("google", safeReturnTo());
+  const handleGoogle = () => {
+    const dest =
+      accountType === "viewer"
+        ? "/marketplace"
+        : `/dashboard?account_type=${accountType || "creator"}`;
+    base44.auth.loginWithProvider("google", dest);
+  };
 
   if (showOtp) {
     return (
