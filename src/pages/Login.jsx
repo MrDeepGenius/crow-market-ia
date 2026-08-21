@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
@@ -7,27 +7,38 @@ import { Label } from "@/components/ui/label";
 import { Mail, Lock, Loader2, ArrowRight } from "lucide-react";
 import AuthLayout from "@/components/AuthLayout";
 import GoogleIcon from "@/components/GoogleIcon";
-import { safeReturnTo, postAuthDestination } from "@/lib/authReturnTo";
+import { useAuth } from "@/lib/AuthContext";
+import { safeReturnTo, postAuthDestination, destinationForAccountType } from "@/lib/authReturnTo";
 
 export default function Login() {
+  const { isAuthenticated, user, authChecked } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const returnTo = safeReturnTo();
 
+  // Already authenticated? Skip the form and go straight to the role panel.
+  useEffect(() => {
+    if (authChecked && isAuthenticated && user) {
+      window.location.replace(destinationForAccountType(user.account_type));
+    }
+  }, [authChecked, isAuthenticated, user]);
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
     setLoading(true);
     try {
-      await base44.auth.loginViaEmailPassword(email, password);
-      let accountType = "creator";
-      try {
-        const me = await base44.auth.me();
-        accountType = me?.account_type || "creator";
-      } catch {
-        /* fall back to creator */
+      const { user: loggedInUser } = await base44.auth.loginViaEmailPassword(email, password);
+      let accountType = loggedInUser?.account_type || "creator";
+      if (!loggedInUser?.account_type) {
+        try {
+          const me = await base44.auth.me();
+          accountType = me?.account_type || "creator";
+        } catch {
+          /* fall back to creator */
+        }
       }
       window.location.href = postAuthDestination(accountType);
     } catch (err) {

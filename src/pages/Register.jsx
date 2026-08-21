@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
@@ -10,9 +10,11 @@ import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp
 import AuthLayout from "@/components/AuthLayout";
 import GoogleIcon from "@/components/GoogleIcon";
 import { toast } from "@/components/ui/use-toast";
-import { safeReturnTo, postAuthDestination } from "@/lib/authReturnTo";
+import { useAuth } from "@/lib/AuthContext";
+import { safeReturnTo, postAuthDestination, destinationForAccountType } from "@/lib/authReturnTo";
 
 export default function Register() {
+  const { isAuthenticated, user, authChecked } = useAuth();
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
@@ -24,6 +26,13 @@ export default function Register() {
   const [showOtp, setShowOtp] = useState(false);
   const [otpCode, setOtpCode] = useState("");
   const [accountType, setAccountType] = useState(null); // "creator" | "affiliate"
+
+  // Already authenticated? Skip the form and go straight to the role panel.
+  useEffect(() => {
+    if (authChecked && isAuthenticated && user) {
+      window.location.replace(destinationForAccountType(user.account_type));
+    }
+  }, [authChecked, isAuthenticated, user]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
