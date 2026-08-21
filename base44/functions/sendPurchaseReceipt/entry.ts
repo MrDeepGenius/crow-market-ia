@@ -1,7 +1,10 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
+import { sendTemplate } from '../../shared/resendEmail.js';
 
 // =============================================================================
-// Registra el email del comprador en la orden y envia el recibo de compra.
+// Registra el email del comprador en la orden y envia por Resend:
+//   - Compra confirmada
+//   - Recibo de compra
 // =============================================================================
 
 export default async function(req) {
@@ -26,38 +29,29 @@ export default async function(req) {
 
     await base44.entities.PaymentOrder.update(orderId, { receipt_email: String(email) });
 
-    const total = Number(order.total).toFixed(2);
-    const amount = Number(order.amount).toFixed(2);
-    const modeLabel = order.mode === 'rent' ? 'Alquiler mensual' : 'Compra unica';
+    const buyerName = user.full_name || String(email);
+    const dateStr = new Date().toLocaleDateString('es-AR', { year: 'numeric', month: 'long', day: 'numeric' });
+    const vars = {
+      buyerName,
+      name: buyerName,
+      productName: order.product_name,
+      product: order.product_name,
+      price: Number(order.total).toFixed(2),
+      orderId: order.id,
+      date: dateStr,
+    };
 
-    const html = `
-      <div style="font-family:Inter,Arial,sans-serif;max-width:520px;margin:auto;background:#0b0b12;color:#e9e9f5;padding:28px;border-radius:16px;border:1px solid #2a1a4a">
-        <h2 style="color:#a855f7;margin:0 0 4px">Recibo de compra · Crow Market</h2>
-        <p style="color:#9a9ab5;font-size:13px;margin:0 0 18px">Orden #${order.id.slice(0, 8)}</p>
-        <table style="width:100%;font-size:14px;border-collapse:collapse">
-          <tr><td style="color:#9a9ab5;padding:6px 0">Producto</td><td style="text-align:right;font-weight:600">${order.product_name}</td></tr>
-          <tr><td style="color:#9a9ab5;padding:6px 0">Modalidad</td><td style="text-align:right">${modeLabel}</td></tr>
-          <tr><td style="color:#9a9ab5;padding:6px 0">Red</td><td style="text-align:right">${order.network} (USDT)</td></tr>
-          <tr><td style="color:#9a9ab5;padding:6px 0">Monto</td><td style="text-align:right">$${amount} USDT</td></tr>
-          <tr><td style="color:#9a9ab5;padding:6px 0">Total transferido</td><td style="text-align:right;font-weight:700;color:#a855f7">$${total} USDT</td></tr>
-        </table>
-        <p style="font-size:12px;color:#7a7a95;margin-top:18px">Tu pago esta en verificacion. Te notificaremos al confirmarse la acreditacion en la red ${order.network}.</p>
-        <p style="font-size:11px;color:#5a5a78;margin-top:24px">Crow Market IA · Este recibo es automatico.</p>
-      </div>
-    `;
-
+    const results = { emailed: true, sent: [] };
     try {
-      await base44.asServiceRole.integrations.Core.SendEmail({
-        to: String(email),
-        subject: 'Recibo de compra · Crow Market',
-        body: html,
-      });
-    } catch (mailErr) {
-      console.error('SendEmail falló (email guardado de todos modos):', mailErr);
-      return Response.json({ success: true, emailed: false, note: 'Email guardado. El envio del recibo quedara pendiente.' });
-    }
+      await sendTemplate(String(email), 'purchaseConfirmed', vars);
+      results.sent.push('purchaseConfirmed');
+    } catch (e) { results.emailed = false; results.errorConfirmed = e.message; }
+    try {
+      await sendTemplate(String(email), 'receipt', vars);
+      results.sent.push('receipt');
+    } catch (e) { results.emailed = results.emailed && false; results.errorReceipt = e.message; }
 
-    return Response.json({ success: true, emailed: true });
+    return Response.json({ success: true, ...results });
   } catch (error) {
     console.error('sendPurchaseReceipt error:', error);
     return Response.json({ error: error.message }, { status: 500 });
