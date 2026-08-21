@@ -1,8 +1,9 @@
 import React, { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/lib/AuthContext";
-import { Sparkles, LogOut, Menu, X, Bell, Search } from "lucide-react";
+import { LogOut, Menu, X, Bell, Search } from "lucide-react";
 import ThemeToggle from "@/components/ThemeToggle";
+import BrandLogo from "@/components/BrandLogo";
 
 export default function DashboardShell({ title, navItems, active, onSelect, children }) {
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -27,12 +28,7 @@ export default function DashboardShell({ title, navItems, active, onSelect, chil
         }`}
       >
         <div className="flex items-center justify-between h-16 px-5 border-b border-sidebar-border">
-          <Link to="/" className="inline-flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary to-fuchsia-600 flex items-center justify-center glow-violet">
-              <Sparkles className="w-4 h-4 text-white" />
-            </div>
-            <span className="font-heading font-bold tracking-tight">NEXUS</span>
-          </Link>
+          <BrandLogo size="sm" to="/" />
           <button className="lg:hidden text-muted-foreground" onClick={() => setMobileOpen(false)}>
             <X className="w-5 h-5" />
           </button>

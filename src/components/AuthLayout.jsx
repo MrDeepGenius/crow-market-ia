@@ -1,9 +1,8 @@
 import React from "react";
-import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
-import { Sparkles } from "lucide-react";
 import { Image } from "@/components/ui/image";
 import ThemeToggle from "@/components/ThemeToggle";
+import BrandLogo from "@/components/BrandLogo";
 
 const ROBOT_URL =
   "https://media.base44.com/images/public/6a87c70aaf7f69d145da0bdf/20b721461_ChatGPTImage21ago202600_31_24.png";
@@ -62,12 +61,7 @@ export default function AuthLayout({
 
         <div className="relative z-10 h-full flex flex-col justify-between p-12">
           <div className="flex items-center justify-between">
-            <Link to="/" className="inline-flex items-center gap-2.5 group">
-              <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-primary to-fuchsia-600 flex items-center justify-center glow-violet">
-                <Sparkles className="w-5 h-5 text-white" />
-              </div>
-              <span className="font-heading font-bold text-xl tracking-tight text-white">NEXUS</span>
-            </Link>
+            <BrandLogo size="lg" to="/" wordClass="text-white" />
             <ThemeToggle />
           </div>
 
@@ -88,7 +82,7 @@ export default function AuthLayout({
           </motion.div>
 
           <div className="text-xs text-white/50">
-            © 2026 NEXUS · Infraestructura tecnológica para creadores y afiliados
+            © 2026 CrowMarket · Infraestructura tecnológica para creadores y afiliados
           </div>
         </div>
       </div>
@@ -99,12 +93,7 @@ export default function AuthLayout({
           <ThemeToggle />
         </div>
         <div className="w-full max-w-md">
-          <Link to="/" className="lg:hidden inline-flex items-center gap-2.5 mb-8">
-            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-primary to-fuchsia-600 flex items-center justify-center glow-violet">
-              <Sparkles className="w-5 h-5 text-white" />
-            </div>
-            <span className="font-heading font-bold text-xl tracking-tight">NEXUS</span>
-          </Link>
+          <BrandLogo size="md" to="/" className="lg:hidden mb-8" />
 
           {/* compact robot on mobile */}
           <div className="lg:hidden mb-8 flex justify-center">
@@ -153,12 +142,5 @@ function Backdrop() {
 }
 
 function BrandMark({ className = "" }) {
-  return (
-    <Link to="/" className={`inline-flex items-center gap-2.5 ${className}`}>
-      <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-primary to-fuchsia-600 flex items-center justify-center glow-violet">
-        <Sparkles className="w-5 h-5 text-white" />
-      </div>
-      <span className="font-heading font-bold text-xl tracking-tight">NEXUS</span>
-    </Link>
-  );
+  return <BrandLogo size="lg" to="/" className={className} />;
 }

@@ -1,19 +1,14 @@
 import React from "react";
 import { Link } from "react-router-dom";
-import { Sparkles } from "lucide-react";
 import ThemeToggle from "@/components/ThemeToggle";
+import BrandLogo from "@/components/BrandLogo";
 
 export default function PublicNavbar() {
   return (
     <header className="fixed top-0 inset-x-0 z-50">
       <div className="mx-auto max-w-7xl px-4 sm:px-6">
         <div className="mt-4 flex items-center justify-between rounded-2xl glass px-4 sm:px-6 h-14">
-          <Link to="/" className="inline-flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary to-fuchsia-600 flex items-center justify-center glow-violet">
-              <Sparkles className="w-5 h-5 text-white" />
-            </div>
-            <span className="font-heading font-bold text-lg tracking-tight">NEXUS</span>
-          </Link>
+          <BrandLogo size="md" to="/" wordClass="hidden sm:inline" />
 
           <nav className="hidden md:flex items-center gap-8 text-sm text-muted-foreground">
             <a href="#features" className="hover:text-foreground transition-colors">Plataforma</a>

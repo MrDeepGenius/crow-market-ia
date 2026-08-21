@@ -8,6 +8,7 @@ import PublicNavbar from "@/components/PublicNavbar";
 import HeroVisual from "@/components/home/HeroVisual";
 import { SAMPLE_PRODUCTS } from "@/data/products";
 import { Image } from "@/components/ui/image";
+import BrandLogo from "@/components/BrandLogo";
 
 const fadeUp = {
   hidden: { opacity: 0, y: 24 },
@@ -47,6 +48,7 @@ export default function Home() {
       <section className="relative pt-32 sm:pt-40 pb-20">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 grid lg:grid-cols-2 gap-12 items-center">
           <motion.div initial="hidden" animate="show" variants={fadeUp}>
+            <BrandLogo size="2xl" className="mb-6" />
             <div className="inline-flex items-center gap-2 rounded-full glass px-3 py-1.5 text-xs text-muted-foreground mb-6">
               <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
               Economía de creadores + IA + Trading
@@ -166,7 +168,7 @@ export default function Home() {
                 Construye tu negocio con IA, <span className="text-gradient-violet">desde hoy</span>
               </h2>
               <p className="mt-4 text-muted-foreground max-w-xl mx-auto">
-                Únete a la nueva generación de creadores y afiliados. Crea, prueba, publica y monetiza dentro del ecosistema NEXUS.
+                Únete a la nueva generación de creadores y afiliados. Crea, prueba, publica y monetiza dentro del ecosistema CrowMarket.
               </p>
               <Link
                 to="/register"
@@ -198,13 +200,8 @@ export default function Home() {
       {/* FOOTER */}
       <footer className="border-t border-border py-10">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 flex flex-col sm:flex-row items-center justify-between gap-4">
-          <div className="inline-flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary to-fuchsia-600 flex items-center justify-center">
-              <Sparkles className="w-4 h-4 text-white" />
-            </div>
-            <span className="font-heading font-bold tracking-tight">NEXUS</span>
-          </div>
-          <p className="text-xs text-muted-foreground">© 2026 NEXUS · Infraestructura tecnológica para creadores y afiliados.</p>
+          <BrandLogo size="sm" to="/" />
+          <p className="text-xs text-muted-foreground">© 2026 CrowMarket · Infraestructura tecnológica para creadores y afiliados.</p>
         </div>
       </footer>
     </div>
