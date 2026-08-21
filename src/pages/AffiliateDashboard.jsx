@@ -9,6 +9,7 @@ import CrowLicenseModule from "@/components/affiliate/CrowLicenseModule";
 import SalesCopilot from "@/components/affiliate/SalesCopilot";
 import ProductsAffiliationTable from "@/components/affiliate/ProductsAffiliationTable";
 import SalesHistory from "@/components/affiliate/SalesHistory";
+import WithdrawalPanel from "@/components/affiliate/WithdrawalPanel";
 
 const navItems = [
   { id: "home", label: "Inicio", icon: LayoutDashboard },
@@ -46,7 +47,7 @@ function SectionRenderer({ active, onNavigate }) {
     case "historial":
       return <SalesHistory />;
     case "wallet":
-      return <WalletSection />;
+      return <WithdrawalPanel />;
     case "settings":
       return <Placeholder title="Configuración" desc="Gestiona tu cuenta, seguridad y preferencias de afiliado." />;
     default:
@@ -65,26 +66,6 @@ function Overview({ onNavigate }) {
       <SalesHistory />
     </div>
   );
-}
-
-function WalletSection() {
-  return (
-    <div className="space-y-4">
-      <SectionHeader title="Wallet & Retiros" />
-      <div className="glass rounded-2xl p-5">
-        <p className="text-xs text-muted-foreground">Saldo disponible (USDT)</p>
-        <p className="text-3xl font-bold mt-1">$1,842.50</p>
-        <button className="mt-4 h-11 px-6 rounded-xl bg-primary text-primary-foreground text-sm font-semibold">
-          Solicitar Retiro
-        </button>
-      </div>
-      <SalesHistory />
-    </div>
-  );
-}
-
-function SectionHeader({ title }) {
-  return <h2 className="font-heading font-bold text-xl">{title}</h2>;
 }
 
 function Placeholder({ title, desc }) {

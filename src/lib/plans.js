@@ -4,6 +4,24 @@
 // publicar se requiere una licencia activa.
 // =============================================================================
 
+// Plan gratuito: solo explorar. 30 creditos IA de bienvenida al registrarse.
+export const FREE_PLAN = {
+  id: "free",
+  name: "Gratis",
+  priceUsd: 0,
+  aiCredits: 30,
+  maxBots: 0,
+  maxPublications: 0,
+  vipSupport: false,
+  tagline: "Para explorar la plataforma",
+  features: [
+    "30 créditos IA de bienvenida",
+    "Explorar el Marketplace",
+    "Acceso al asistente IA",
+    "Sin publicación de bots",
+  ],
+};
+
 export const CREATOR_PLANS = [
   {
     id: "bronce",

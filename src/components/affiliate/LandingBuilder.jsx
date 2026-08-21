@@ -3,6 +3,7 @@ import { Wand2, Loader2, Check, Link2, BarChart3 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { toast } from "@/components/ui/use-toast";
+import { base44 } from "@/api/base44Client";
 import { SAMPLE_PRODUCTS } from "@/data/products";
 
 function Panel({ children, className = "" }) {
@@ -23,15 +24,27 @@ export default function LandingBuilder() {
     }
     setGenerating(true);
     setResult(null);
-    // Simulación de generación con IA (el endpoint real se conecta después)
-    await new Promise((r) => setTimeout(r, 1800));
-    const product = affiliateProducts.find((p) => p.id === productId);
-    setResult({
-      title: `${product.name}: la forma más inteligente de operar con IA`,
-      affiliateLink: `https://crowmarket.ai/r/AFF8421X/${product.id}`,
-      sections: ["Hero persuasivo", "Métricas del bot", "Preguntas frecuentes", "Gráfico de rendimiento", "CTA con tu link de afiliado"],
-    });
-    setGenerating(false);
+    try {
+      const product = affiliateProducts.find((p) => p.id === productId);
+      const res = await base44.functions.invoke("generateLanding", {
+        productName: product.name,
+        productDescription: product.description,
+        category: product.category,
+      });
+      const landing = res?.landing || res;
+      setResult({
+        title: landing.title || `${product.name}: la forma más inteligente de operar con IA`,
+        subtitle: landing.subtitle || "",
+        benefits: Array.isArray(landing.benefits) ? landing.benefits : [],
+        steps: Array.isArray(landing.steps) ? landing.steps : [],
+        cta: landing.cta || "Comprar ahora",
+        affiliateLink: `https://crowmarket.ai/r/AFF8421X/${product.id}`,
+      });
+    } catch (err) {
+      toast({ variant: "destructive", title: "No se pudo generar", description: err?.message || "Intenta de nuevo." });
+    } finally {
+      setGenerating(false);
+    }
   };
 
   const copyLink = (link) => {
@@ -102,19 +115,40 @@ export default function LandingBuilder() {
           {!generating && result && (
             <div className="space-y-3">
               <div>
-                <p className="text-[11px] uppercase tracking-wider text-muted-foreground">Título generado</p>
-                <p className="font-semibold text-sm mt-0.5">{result.title}</p>
+                <p className="font-heading font-bold text-lg leading-tight">{result.title}</p>
+                {result.subtitle && <p className="text-sm text-muted-foreground mt-1">{result.subtitle}</p>}
               </div>
-              <div>
-                <p className="text-[11px] uppercase tracking-wider text-muted-foreground mb-1.5">Secciones incluidas</p>
-                <div className="flex flex-wrap gap-1.5">
-                  {result.sections.map((s) => (
-                    <span key={s} className="text-[11px] px-2 py-1 rounded-full bg-primary/10 text-primary border border-primary/20 flex items-center gap-1">
-                      <Check className="w-3 h-3" /> {s}
-                    </span>
-                  ))}
+
+              {result.benefits.length > 0 && (
+                <div>
+                  <p className="text-[11px] uppercase tracking-wider text-muted-foreground mb-1.5">Beneficios</p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {result.benefits.map((b, i) => (
+                      <span key={i} className="text-[11px] px-2 py-1 rounded-full bg-primary/10 text-primary border border-primary/20 flex items-center gap-1">
+                        <Check className="w-3 h-3" /> {b}
+                      </span>
+                    ))}
+                  </div>
                 </div>
-              </div>
+              )}
+
+              {result.steps.length > 0 && (
+                <div>
+                  <p className="text-[11px] uppercase tracking-wider text-muted-foreground mb-1.5">Cómo funciona</p>
+                  <div className="space-y-2">
+                    {result.steps.map((s, i) => (
+                      <div key={i} className="flex gap-2.5">
+                        <span className="w-5 h-5 rounded-full bg-primary/15 text-primary text-[11px] font-semibold flex items-center justify-center shrink-0 mt-0.5">{i + 1}</span>
+                        <div>
+                          <p className="text-sm font-medium">{s.title}</p>
+                          <p className="text-xs text-muted-foreground">{s.desc}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               <div className="rounded-xl bg-background/60 border border-border p-3">
                 <p className="text-[11px] uppercase tracking-wider text-muted-foreground mb-1">Tu link de afiliado</p>
                 <div className="flex items-center gap-2">
@@ -124,7 +158,7 @@ export default function LandingBuilder() {
                   </Button>
                 </div>
               </div>
-              <Button className="w-full h-10">Ver landing publicada</Button>
+              <Button className="w-full h-10">{result.cta}</Button>
             </div>
           )}
         </div>

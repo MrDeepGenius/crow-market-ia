@@ -1,0 +1,39 @@
+{
+  "name": "Withdrawal",
+  "type": "object",
+  "properties": {
+    "amount": {
+      "type": "number",
+      "description": "Monto del retiro en USDT"
+    },
+    "network": {
+      "type": "string",
+      "enum": [
+        "TRC20",
+        "BEP20"
+      ],
+      "description": "Red de retiro USDT"
+    },
+    "wallet_address": {
+      "type": "string",
+      "description": "Direccion de billetera destino del afiliado"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "pending",
+        "processing",
+        "completed",
+        "rejected"
+      ],
+      "default": "pending",
+      "description": "Estado del retiro en el back-office"
+    }
+  },
+  "required": [
+    "amount",
+    "network",
+    "wallet_address",
+    "status"
+  ]
+}
