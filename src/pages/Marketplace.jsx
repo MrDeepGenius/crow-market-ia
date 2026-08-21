@@ -8,6 +8,8 @@ import ProductModal from "@/components/marketplace/ProductModal";
 import FilterBar from "@/components/marketplace/FilterBar";
 import PublicNavbar from "@/components/PublicNavbar";
 import { useAuth } from "@/lib/AuthContext";
+import { base44 } from "@/api/base44Client";
+import { LogOut } from "lucide-react";
 
 export default function Marketplace() {
   const [cat, setCat] = useState("Todos");
@@ -17,6 +19,10 @@ export default function Marketplace() {
   const [maxPrice, setMaxPrice] = useState(500);
   const [selected, setSelected] = useState(null);
   const { isAuthenticated } = useAuth();
+
+  const handleLogout = async () => {
+    await base44.auth.logout("/login");
+  };
 
   const suggestions = useMemo(() => {
     if (!q) return [];
@@ -62,6 +68,16 @@ export default function Marketplace() {
   return (
     <div className="min-h-screen bg-background">
       {!isAuthenticated && <PublicNavbar />}
+      {isAuthenticated && (
+        <div className="fixed top-4 right-4 z-50">
+          <button
+            onClick={handleLogout}
+            className="flex items-center gap-2 text-sm font-medium px-4 py-2.5 rounded-xl glass border border-border hover:bg-secondary/60 transition-colors"
+          >
+            <LogOut className="w-4 h-4" /> Cerrar sesion
+          </button>
+        </div>
+      )}
       <div className="fixed inset-0 -z-10 grid-bg opacity-20" />
       <div className="fixed -top-1/4 left-1/3 -z-10 w-[50rem] h-[50rem] rounded-full bg-[radial-gradient(circle,hsl(276_91%_55%_/_0.14),transparent_60%)] blur-3xl" />
       <div className="fixed top-1/3 -right-1/4 -z-10 w-[40rem] h-[40rem] rounded-full bg-[radial-gradient(circle,hsl(190_90%_50%_/_0.10),transparent_60%)] blur-3xl" />

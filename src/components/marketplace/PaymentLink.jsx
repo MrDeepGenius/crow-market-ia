@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Wallet, Copy, Check, Loader2, Link2, ArrowRight, ShieldCheck } from "lucide-react";
+import { Wallet, Copy, Check, Loader2, Link2, ArrowRight, ShieldCheck, Mail } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "@/components/ui/use-toast";
 import { base44 } from "@/api/base44Client";
@@ -17,6 +17,9 @@ export default function PaymentLink({ product, mode, price }) {
   const [copied, setCopied] = useState(false);
   const [marking, setMarking] = useState(false);
   const [paid, setPaid] = useState(false);
+  const [email, setEmail] = useState("");
+  const [sending, setSending] = useState(false);
+  const [receiptSent, setReceiptSent] = useState(false);
 
   const handleGenerate = async () => {
     setStep("generating");
@@ -60,6 +63,22 @@ export default function PaymentLink({ product, mode, price }) {
       toast({ variant: "destructive", title: "No se pudo registrar", description: err?.message || "Intenta de nuevo." });
     } finally {
       setMarking(false);
+    }
+  };
+
+  const sendReceipt = async () => {
+    if (!data?.orderId || !email) return;
+    setSending(true);
+    try {
+      const res = await base44.functions.invoke("sendPurchaseReceipt", { orderId: data.orderId, email });
+      const d = res?.data || res;
+      if (d?.error) throw new Error(d.error);
+      setReceiptSent(true);
+      toast({ title: "Recibo enviado", description: d?.emailed === false ? "Email guardado. El envio quedara pendiente." : `Recibo enviado a ${email}.` });
+    } catch (err) {
+      toast({ variant: "destructive", title: "No se pudo enviar el recibo", description: err?.message || "Intenta de nuevo." });
+    } finally {
+      setSending(false);
     }
   };
 
@@ -152,18 +171,50 @@ export default function PaymentLink({ product, mode, price }) {
           </motion.div>
         )}
 
-        {step === "ready" && paid && (
-          <motion.div key="paid" initial={{ opacity: 0, scale: 0.96 }} animate={{ opacity: 1, scale: 1 }} className="py-6 flex flex-col items-center gap-3 text-center">
+        {step === "ready" && paid && !receiptSent && (
+          <motion.div key="paid" initial={{ opacity: 0, scale: 0.96 }} animate={{ opacity: 1, scale: 1 }} className="space-y-3">
+            <div className="flex items-center gap-2 text-emerald-400">
+              <ShieldCheck className="w-5 h-5" />
+              <p className="font-semibold text-sm">Pago en verificacion</p>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Orden #{data?.orderId?.slice(0, 8)} registrada. Dejanos tu Gmail para enviarte el recibo de compra.
+            </p>
+            <div className="relative">
+              <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="tu@gmail.com"
+                className="w-full h-11 pl-10 pr-3 rounded-xl bg-background/60 border border-border text-sm outline-none focus:border-primary"
+              />
+            </div>
+            <Button className="w-full h-11" onClick={sendReceipt} disabled={sending || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)}>
+              {sending ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Mail className="w-4 h-4 mr-2" />}
+              Enviar recibo
+            </Button>
+            <button
+              className="w-full text-xs text-muted-foreground hover:text-foreground py-1"
+              onClick={() => { setStep("idle"); setPaid(false); setData(null); setEmail(""); }}
+            >
+              Saltar y cerrar
+            </button>
+          </motion.div>
+        )}
+
+        {step === "ready" && paid && receiptSent && (
+          <motion.div key="receipt" initial={{ opacity: 0, scale: 0.96 }} animate={{ opacity: 1, scale: 1 }} className="py-6 flex flex-col items-center gap-3 text-center">
             <div className="w-14 h-14 rounded-full bg-emerald-400/15 border border-emerald-400/40 flex items-center justify-center">
-              <ShieldCheck className="w-7 h-7 text-emerald-400" />
+              <Mail className="w-7 h-7 text-emerald-400" />
             </div>
             <div>
-              <p className="font-semibold">Pago en verificacion</p>
+              <p className="font-semibold">Recibo enviado</p>
               <p className="text-xs text-muted-foreground mt-1 max-w-xs">
-                Tu orden #{data?.orderId?.slice(0, 8)} quedó registrada. Confirmaremos la acreditacion en la red {data?.network}.
+                Enviamos el recibo de compra a <span className="text-foreground font-medium">{email}</span>.
               </p>
             </div>
-            <Button variant="outline" className="bg-transparent" onClick={() => { setStep("idle"); setPaid(false); setData(null); }}>
+            <Button variant="outline" className="bg-transparent" onClick={() => { setStep("idle"); setPaid(false); setData(null); setEmail(""); setReceiptSent(false); }}>
               <ArrowRight className="w-4 h-4 mr-2" /> Cerrar
             </Button>
           </motion.div>

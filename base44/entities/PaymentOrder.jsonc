@@ -52,6 +52,10 @@
     "tx_hash": {
       "type": "string",
       "description": "Hash de la transaccion on-chain (opcional)"
+    },
+    "receipt_email": {
+      "type": "string",
+      "description": "Email donde enviar el recibo de compra"
     }
   },
   "required": [
