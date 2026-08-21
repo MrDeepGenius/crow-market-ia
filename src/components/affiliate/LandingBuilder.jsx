@@ -1,10 +1,13 @@
 import React, { useState } from "react";
-import { Wand2, Loader2, Check, Link2, BarChart3 } from "lucide-react";
+import { Wand2, Loader2, Check, Link2, BarChart3, Eye } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { toast } from "@/components/ui/use-toast";
 import { base44 } from "@/api/base44Client";
+import { useAuth } from "@/lib/AuthContext";
 import { SAMPLE_PRODUCTS } from "@/data/products";
+import LandingPreview from "@/components/affiliate/LandingPreview";
+import { Dialog, DialogContent, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 
 function Panel({ children, className = "" }) {
   return <div className={`glass rounded-2xl p-5 ${className}`}>{children}</div>;
@@ -13,9 +16,14 @@ function Panel({ children, className = "" }) {
 const affiliateProducts = SAMPLE_PRODUCTS.filter((p) => p.affiliate);
 
 export default function LandingBuilder() {
+  const { user } = useAuth();
   const [productId, setProductId] = useState("");
   const [generating, setGenerating] = useState(false);
   const [result, setResult] = useState(null);
+  const [showFullPage, setShowFullPage] = useState(false);
+
+  // Codigo de seguimiento unico por afiliado (derivado del id de usuario).
+  const affiliateCode = user?.id ? user.id.slice(0, 8).toUpperCase() : "AFFILIATE";
 
   const handleGenerate = async () => {
     if (!productId) {
@@ -38,7 +46,8 @@ export default function LandingBuilder() {
         benefits: Array.isArray(landing.benefits) ? landing.benefits : [],
         steps: Array.isArray(landing.steps) ? landing.steps : [],
         cta: landing.cta || "Comprar ahora",
-        affiliateLink: `https://crowmarket.ai/r/AFF8421X/${product.id}`,
+        affiliateLink: `https://crowmarket.ai/r/${affiliateCode}/${product.id}`,
+        affiliateCode,
       });
     } catch (err) {
       toast({ variant: "destructive", title: "No se pudo generar", description: err?.message || "Intenta de nuevo." });
@@ -93,6 +102,24 @@ export default function LandingBuilder() {
               </>
             )}
           </Button>
+
+          {result && (
+            <Dialog open={showFullPage} onOpenChange={setShowFullPage}>
+              <DialogTrigger asChild>
+                <Button variant="outline" className="w-full h-11 bg-transparent">
+                  <Eye className="w-4 h-4 mr-2" /> Ver landing completa (página real)
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="max-w-5xl w-full h-[90vh] p-0 overflow-y-auto gap-0 rounded-2xl">
+                <DialogTitle className="sr-only">Landing page generada</DialogTitle>
+                <LandingPreview
+                  landing={result}
+                  affiliateLink={result.affiliateLink}
+                  product={affiliateProducts.find((p) => p.id === productId)}
+                />
+              </DialogContent>
+            </Dialog>
+          )}
 
           <div className="rounded-xl bg-primary/5 border border-primary/20 p-3 text-xs text-muted-foreground">
             <span className="text-primary font-semibold">Vinculación automática:</span> todos los botones (Comprar, Alquilar, Probar) incluyen directamente tu link de afiliado.
@@ -150,7 +177,7 @@ export default function LandingBuilder() {
               )}
 
               <div className="rounded-xl bg-background/60 border border-border p-3">
-                <p className="text-[11px] uppercase tracking-wider text-muted-foreground mb-1">Tu link de afiliado</p>
+                <p className="text-[11px] uppercase tracking-wider text-muted-foreground mb-1">Tu link de afiliado · código {result.affiliateCode}</p>
                 <div className="flex items-center gap-2">
                   <code className="text-xs font-mono break-all flex-1">{result.affiliateLink}</code>
                   <Button size="sm" variant="outline" className="bg-transparent shrink-0" onClick={() => copyLink(result.affiliateLink)}>
