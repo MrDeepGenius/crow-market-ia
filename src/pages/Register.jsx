@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Mail, Lock, Loader2, User, ArrowRight, Palette, Megaphone } from "lucide-react";
+import { Mail, Lock, Loader2, User, ArrowRight, Palette, Megaphone, Store } from "lucide-react";
 import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
 import AuthLayout from "@/components/AuthLayout";
 import GoogleIcon from "@/components/GoogleIcon";
@@ -139,7 +139,7 @@ export default function Register() {
       {/* Account type selector */}
       <div className="mb-6">
         <p className="text-sm font-medium mb-3">¿Cómo quieres utilizar la plataforma?</p>
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           <TypeCard
             active={accountType === "creator"}
             onClick={() => setAccountType("creator")}
@@ -153,6 +153,13 @@ export default function Register() {
             icon={Megaphone}
             title="Afiliado"
             desc="Promocionar productos y generar comisiones."
+          />
+          <TypeCard
+            active={accountType === "viewer"}
+            onClick={() => setAccountType("viewer")}
+            icon={Store}
+            title="Ver Marketplace"
+            desc="Explorar y comprar productos digitales."
           />
         </div>
       </div>
