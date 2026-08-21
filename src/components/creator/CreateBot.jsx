@@ -1,12 +1,18 @@
 import React, { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Sparkles, Wrench, ArrowLeft, Loader2, RefreshCw, Save, Edit3, Bot, AlertTriangle } from "lucide-react";
+import { Sparkles, Wrench, ArrowLeft, Loader2, RefreshCw, Save, Edit3, Bot, AlertTriangle, CheckCircle2 } from "lucide-react";
 import { base44 } from "@/api/base44Client";
+import { useAuth } from "@/lib/AuthContext";
+import { toast } from "@/components/ui/use-toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { DEFAULT_PRODUCT_IMAGE } from "@/data/products";
 
-// Create Bot flow (spec §14-15): choose IA vs Manual, then generate or configure.
+const BOT_CATEGORY = "Bots de Trading IA";
+const RISK_OPTIONS = ["Bajo", "Medio", "Alto"];
+
+// Create Bot flow: choose IA vs Manual, then generate or configure, then publish to marketplace.
 export default function CreateBot({ onSaved }) {
   const [mode, setMode] = useState("choose"); // "choose" | "ia" | "manual"
 
@@ -57,6 +63,103 @@ export default function CreateBot({ onSaved }) {
           </motion.div>
         )}
       </AnimatePresence>
+    </div>
+  );
+}
+
+function PublishPanel({ bot, config, onPublished, defaultName }) {
+  const { user } = useAuth();
+  const [rentPrice, setRentPrice] = useState("");
+  const [buyPrice, setBuyPrice] = useState("");
+  const [risk, setRisk] = useState("Medio");
+  const [image, setImage] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  const publish = async () => {
+    const rent = Number(rentPrice);
+    const buy = Number(buyPrice);
+    if (!defaultName || defaultName.trim().length < 2) {
+      toast({ variant: "destructive", title: "Falta el nombre", description: "Define un nombre para el bot." });
+      return;
+    }
+    if (!rent || rent <= 0) {
+      toast({ variant: "destructive", title: "Precio inválido", description: "Define un precio de alquiler mensual." });
+      return;
+    }
+    setSaving(true);
+    try {
+      const record = {
+        name: defaultName.trim(),
+        creator: user?.full_name || user?.email || "Crow Market",
+        type: "bot",
+        category: BOT_CATEGORY,
+        description: bot?.description || config?.description || "",
+        image: image || DEFAULT_PRODUCT_IMAGE,
+        tag: "Nuevo",
+        verified: false,
+        featured: false,
+        rentPrice: rent,
+        buyPrice: buy || 0,
+        risk,
+        timeframe: bot?.timeframe || config?.timeframe || "—",
+        winRate: Number(bot?.winRate) || 0,
+        pnl: Number(bot?.pnl) || 0,
+        includes: bot?.includes || ["Estrategia preconfigurada", "Gestión de riesgo", "Panel de monitoreo"],
+        requirements: bot?.requirements || ["Exchange con API de trading"],
+        config: bot || config || null,
+        status: "published",
+      };
+      await base44.entities.Product.create(record);
+      toast({ title: "Bot publicado", description: "Ya está visible en el marketplace tal cual lo configuraste." });
+      onPublished?.();
+    } catch (err) {
+      toast({ variant: "destructive", title: "No se pudo publicar", description: err?.message || "Intenta nuevamente." });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="glass rounded-2xl p-5 mt-5 border border-primary/20">
+      <div className="flex items-center gap-2 mb-4">
+        <div className="w-8 h-8 rounded-lg bg-primary/15 flex items-center justify-center">
+          <CheckCircle2 className="w-4 h-4 text-primary" />
+        </div>
+        <h3 className="font-semibold">Publicar en el marketplace</h3>
+      </div>
+      <div className="grid sm:grid-cols-2 gap-4">
+        <div className="space-y-2">
+          <Label>Alquiler (USDT / mes)</Label>
+          <Input type="number" value={rentPrice} onChange={(e) => setRentPrice(e.target.value)} placeholder="25" className="h-11 bg-secondary/50 border-border" />
+        </div>
+        <div className="space-y-2">
+          <Label>Compra única (USDT) · opcional</Label>
+          <Input type="number" value={buyPrice} onChange={(e) => setBuyPrice(e.target.value)} placeholder="299" className="h-11 bg-secondary/50 border-border" />
+        </div>
+        <div className="space-y-2">
+          <Label>Nivel de riesgo</Label>
+          <div className="flex gap-2">
+            {RISK_OPTIONS.map((r) => (
+              <button
+                key={r}
+                type="button"
+                onClick={() => setRisk(r)}
+                className={`flex-1 rounded-xl border px-3 py-2.5 text-sm transition ${risk === r ? "border-primary bg-primary/15 text-primary" : "border-border text-muted-foreground hover:bg-secondary/50"}`}
+              >
+                {r}
+              </button>
+            ))}
+          </div>
+        </div>
+        <div className="space-y-2">
+          <Label>Imagen (URL) · opcional</Label>
+          <Input value={image} onChange={(e) => setImage(e.target.value)} placeholder="https://..." className="h-11 bg-secondary/50 border-border" />
+        </div>
+      </div>
+      <Button onClick={publish} disabled={saving} className="mt-5 h-11 px-6">
+        {saving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
+        {saving ? "Publicando..." : "Publicar bot"}
+      </Button>
     </div>
   );
 }
@@ -173,10 +276,7 @@ function IABotBuilder({ onSaved }) {
             <ConfigField className="mt-3" label="Filtros" value={bot.filters} full />
             <ConfigField className="mt-3" label="Descripción" value={bot.description} full />
 
-            <div className="mt-5 flex flex-wrap gap-3">
-              <Button onClick={() => onSaved?.(bot)} className="h-11 px-6">
-                <Save className="w-4 h-4 mr-2" /> Guardar
-              </Button>
+            <div className="mt-4 flex flex-wrap gap-3">
               <Button variant="outline" onClick={generate} disabled={loading} className="h-11 px-6 bg-transparent border-border hover:bg-secondary">
                 <RefreshCw className="w-4 h-4 mr-2" /> Regenerar
               </Button>
@@ -188,10 +288,12 @@ function IABotBuilder({ onSaved }) {
             <div className="mt-4 flex items-start gap-2 p-3 rounded-xl bg-yellow-400/5 border border-yellow-400/15">
               <AlertTriangle className="w-4 h-4 text-yellow-400 mt-0.5 shrink-0" />
               <p className="text-xs text-muted-foreground">
-                La IA no publica ni activa el bot automáticamente. Revisa y confirma la configuración antes de continuar.
+                La IA no publica ni activa el bot automáticamente. Configura el precio y publica para que aparezca en el marketplace.
               </p>
             </div>
           </div>
+
+          <PublishPanel bot={bot} config={bot} defaultName={bot.name} onPublished={() => onSaved?.("bots")} />
         </motion.div>
       )}
     </div>
@@ -199,32 +301,111 @@ function IABotBuilder({ onSaved }) {
 }
 
 function ManualBotBuilder({ onSaved }) {
+  const { user } = useAuth();
+  const [form, setForm] = useState({
+    name: "", exchange: "", market: "", pair: "BTC/USDT", timeframe: "15m",
+    riskPerOp: "", stopLoss: "", takeProfit: "", trailingStop: "", maxDailyLoss: "",
+    maxDrawdown: "", maxOps: "", strategy: "", rentPrice: "", buyPrice: "", risk: "Medio", image: "",
+  });
+  const [saving, setSaving] = useState(false);
+  const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }));
+
+  const publish = async () => {
+    if (!form.name.trim()) {
+      toast({ variant: "destructive", title: "Falta el nombre" });
+      return;
+    }
+    const rent = Number(form.rentPrice);
+    if (!rent || rent <= 0) {
+      toast({ variant: "destructive", title: "Precio inválido", description: "Define un precio de alquiler mensual." });
+      return;
+    }
+    setSaving(true);
+    try {
+      const config = {
+        exchange: form.exchange, market: form.market, pair: form.pair, timeframe: form.timeframe,
+        riskPerOp: form.riskPerOp, stopLoss: form.stopLoss, takeProfit: form.takeProfit,
+        trailingStop: form.trailingStop, maxDailyLoss: form.maxDailyLoss, maxDrawdown: form.maxDrawdown,
+        maxOps: form.maxOps, strategy: form.strategy,
+      };
+      const record = {
+        name: form.name.trim(),
+        creator: user?.full_name || user?.email || "Crow Market",
+        type: "bot",
+        category: BOT_CATEGORY,
+        description: form.strategy || `Bot de trading ${form.pair} en ${form.timeframe}.`,
+        image: form.image || DEFAULT_PRODUCT_IMAGE,
+        tag: "Nuevo",
+        verified: false,
+        featured: false,
+        rentPrice: rent,
+        buyPrice: Number(form.buyPrice) || 0,
+        risk: form.risk,
+        timeframe: `${form.timeframe} · ${form.pair}`,
+        winRate: 0,
+        pnl: 0,
+        includes: ["Estrategia preconfigurada", "Gestión de riesgo", "Panel de monitoreo"],
+        requirements: [form.exchange ? `Exchange ${form.exchange}` : "Exchange con API de trading"],
+        config,
+        status: "published",
+      };
+      await base44.entities.Product.create(record);
+      toast({ title: "Bot publicado", description: "Ya está visible en el marketplace." });
+      onSaved?.("bots");
+    } catch (err) {
+      toast({ variant: "destructive", title: "No se pudo publicar", description: err?.message || "Intenta nuevamente." });
+    } finally {
+      setSaving(false);
+    }
+  };
+
   return (
     <div className="glass rounded-2xl p-5 space-y-4">
       <div className="grid sm:grid-cols-2 gap-4">
-        <FormField label="Nombre del bot" placeholder="Ej. Apex BTC Pro" />
-        <FormField label="Exchange" placeholder="Binance / Bybit / OKX" />
-        <FormField label="Mercado" placeholder="Spot / Futures" />
-        <FormField label="Par" placeholder="BTC/USDT" />
-        <FormField label="Timeframe" placeholder="1m / 5m / 15m / 1H / 4H / 1D" />
-        <FormField label="Riesgo por operación (%)" placeholder="1" type="number" />
-        <FormField label="Stop Loss (%)" placeholder="2" type="number" />
-        <FormField label="Take Profit (%)" placeholder="4" type="number" />
-        <FormField label="Trailing Stop (%)" placeholder="1.5" type="number" />
-        <FormField label="Máx. pérdida diaria (%)" placeholder="5" type="number" />
-        <FormField label="Máx. drawdown (%)" placeholder="15" type="number" />
-        <FormField label="Máx. operaciones" placeholder="10" type="number" />
+        <FormField label="Nombre del bot" placeholder="Ej. Apex BTC Pro" value={form.name} onChange={set("name")} />
+        <FormField label="Exchange" placeholder="Binance / Bybit / OKX" value={form.exchange} onChange={set("exchange")} />
+        <FormField label="Mercado" placeholder="Spot / Futures" value={form.market} onChange={set("market")} />
+        <FormField label="Par" placeholder="BTC/USDT" value={form.pair} onChange={set("pair")} />
+        <FormField label="Timeframe" placeholder="1m / 5m / 15m / 1H" value={form.timeframe} onChange={set("timeframe")} />
+        <FormField label="Riesgo por operación (%)" placeholder="1" type="number" value={form.riskPerOp} onChange={set("riskPerOp")} />
+        <FormField label="Stop Loss (%)" placeholder="2" type="number" value={form.stopLoss} onChange={set("stopLoss")} />
+        <FormField label="Take Profit (%)" placeholder="4" type="number" value={form.takeProfit} onChange={set("takeProfit")} />
+        <FormField label="Trailing Stop (%)" placeholder="1.5" type="number" value={form.trailingStop} onChange={set("trailingStop")} />
+        <FormField label="Máx. pérdida diaria (%)" placeholder="5" type="number" value={form.maxDailyLoss} onChange={set("maxDailyLoss")} />
+        <FormField label="Máx. drawdown (%)" placeholder="15" type="number" value={form.maxDrawdown} onChange={set("maxDrawdown")} />
+        <FormField label="Máx. operaciones" placeholder="10" type="number" value={form.maxOps} onChange={set("maxOps")} />
       </div>
       <div>
         <Label className="mb-2 block">Indicadores y reglas de entrada/salida</Label>
         <textarea
+          value={form.strategy}
+          onChange={set("strategy")}
           placeholder="Describe la estrategia, indicadores (EMA, RSI, MACD...) y reglas de entrada/salida..."
           rows={4}
           className="w-full rounded-xl bg-secondary/50 border border-border p-3 text-sm outline-none focus:border-primary resize-none"
         />
       </div>
+      <div className="grid sm:grid-cols-3 gap-4 pt-2 border-t border-border">
+        <FormField label="Alquiler (USDT/mes)" placeholder="25" type="number" value={form.rentPrice} onChange={set("rentPrice")} />
+        <FormField label="Compra única (USDT)" placeholder="299" type="number" value={form.buyPrice} onChange={set("buyPrice")} />
+        <div className="space-y-2">
+          <Label>Riesgo</Label>
+          <div className="flex gap-2">
+            {RISK_OPTIONS.map((r) => (
+              <button key={r} type="button" onClick={() => setForm((f) => ({ ...f, risk: r }))}
+                className={`flex-1 rounded-xl border px-2 py-2.5 text-xs transition ${form.risk === r ? "border-primary bg-primary/15 text-primary" : "border-border text-muted-foreground hover:bg-secondary/50"}`}>
+                {r}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+      <FormField label="Imagen (URL) · opcional" placeholder="https://..." value={form.image} onChange={set("image")} />
       <div className="flex gap-3">
-        <Button onClick={() => onSaved?.({})} className="h-11 px-6">Guardar bot</Button>
+        <Button onClick={publish} disabled={saving} className="h-11 px-6">
+          {saving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
+          {saving ? "Publicando..." : "Publicar bot"}
+        </Button>
         <Button variant="outline" className="h-11 px-6 bg-transparent border-border hover:bg-secondary">Ejecutar backtest</Button>
       </div>
     </div>
@@ -264,11 +445,11 @@ function ConfigField({ label, value, full, className = "" }) {
   );
 }
 
-function FormField({ label, placeholder, type = "text" }) {
+function FormField({ label, placeholder, type = "text", value, onChange }) {
   return (
     <div className="space-y-2">
       <Label>{label}</Label>
-      <Input type={type} placeholder={placeholder} className="h-11 bg-secondary/50 border-border" />
+      <Input type={type} placeholder={placeholder} value={value} onChange={onChange} className="h-11 bg-secondary/50 border-border" />
     </div>
   );
 }

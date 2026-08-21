@@ -1,7 +1,7 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { Search, Sparkles } from "lucide-react";
 import { Input } from "@/components/ui/input";
-import { SAMPLE_PRODUCTS, MARKET_CATEGORIES } from "@/data/products";
+import { SAMPLE_PRODUCTS, MARKET_CATEGORIES, normalizeEntityProduct } from "@/data/products";
 import BotCard from "@/components/marketplace/BotCard";
 import InfoCard from "@/components/marketplace/InfoCard";
 import ProductModal from "@/components/marketplace/ProductModal";
@@ -19,16 +19,34 @@ export default function Marketplace() {
   const [maxPrice, setMaxPrice] = useState(500);
   const [selected, setSelected] = useState(null);
   const { isAuthenticated } = useAuth();
+  const [userProducts, setUserProducts] = useState([]);
 
   const handleLogout = async () => {
     await base44.auth.logout("/login");
   };
 
+  useEffect(() => {
+    let active = true;
+    base44.functions.invoke("listPublishedProducts", {})
+      .then((res) => {
+        if (!active) return;
+        const rows = res?.data?.products || res?.products || [];
+        const mapped = rows.map(normalizeEntityProduct);
+        setUserProducts(mapped);
+      })
+      .catch(() => {
+        /* catálogo curado sigue disponible */
+      });
+    return () => { active = false; };
+  }, []);
+
+  const catalog = useMemo(() => [...userProducts, ...SAMPLE_PRODUCTS], [userProducts]);
+
   const suggestions = useMemo(() => {
     if (!q) return [];
     const ql = q.toLowerCase();
-    return SAMPLE_PRODUCTS.filter((p) => p.name.toLowerCase().includes(ql) || p.creator.toLowerCase().includes(ql)).slice(0, 5);
-  }, [q]);
+    return catalog.filter((p) => p.name.toLowerCase().includes(ql) || p.creator.toLowerCase().includes(ql)).slice(0, 5);
+  }, [q, catalog]);
 
   const matchesFilters = (p) => {
     const price = p.type === "bot" ? Math.min(p.rentPrice, p.buyPrice) : p.price;
@@ -53,14 +71,14 @@ export default function Marketplace() {
   };
 
   const filtered = useMemo(() => {
-    let list = SAMPLE_PRODUCTS.filter(
+    let list = catalog.filter(
       (p) =>
         (cat === "Todos" || p.category === cat) &&
         (q === "" || p.name.toLowerCase().includes(q.toLowerCase()) || p.creator.toLowerCase().includes(q.toLowerCase())) &&
         matchesFilters(p)
     );
     return applySort(list);
-  }, [cat, q, sort, payType, maxPrice]);
+  }, [catalog, cat, q, sort, payType, maxPrice]);
 
   const bots = filtered.filter((p) => p.type === "bot");
   const others = filtered.filter((p) => p.type !== "bot");

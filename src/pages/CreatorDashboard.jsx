@@ -14,6 +14,7 @@ import { useAuth } from "@/lib/AuthContext";
 import { base44 } from "@/api/base44Client";
 import { purchasePlan, creditWallet } from "@/lib/purchase";
 import { CREATOR_PLANS, USDT_DEPOSIT } from "@/lib/plans";
+import { MARKET_CATEGORIES, DEFAULT_PRODUCT_IMAGE } from "@/data/products";
 import { toast } from "@/components/ui/use-toast";
 import { AreaChart, Area, ResponsiveContainer, Tooltip, XAxis } from "recharts";
 import { Button } from "@/components/ui/button";
@@ -161,64 +162,180 @@ function HomeSection() {
 }
 
 function ProductsSection() {
-  const products = [
-    { n: "Apex BTC Pro", p: "$25/mes", v: "Validado", a: "20%" },
-    { n: "Risk Guardian", p: "$19/mes", v: "Nuevo", a: "—" },
-    { n: "Funnel AI Pack", p: "$49", v: "Bestseller", a: "20%" },
-  ];
+  const { user } = useAuth();
+  const [items, setItems] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!user?.id) return;
+    let active = true;
+    base44.entities.Product.filter({ created_by_id: user.id }, "-created_date", 50)
+      .then((rows) => { if (active) setItems(rows || []); })
+      .catch(() => {})
+      .finally(() => { if (active) setLoading(false); });
+    return () => { active = false; };
+  }, [user?.id]);
+
+  const priceLabel = (p) => {
+    if (p.type === "bot") return `$${p.rentPrice}/mes${p.buyPrice ? ` · compra $${p.buyPrice}` : ""}`;
+    return `$${p.price}${p.period === "mes" ? "/mes" : ""}`;
+  };
+
   return (
     <div className="space-y-4">
       <SectionHeader title="Mis productos" action="Crear producto" />
-      <div className="grid gap-3">
-        {products.map((p) => (
-          <Panel key={p.n} className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <div className="w-11 h-11 rounded-xl bg-primary/15 flex items-center justify-center">
-                <Package className="w-5 h-5 text-primary" />
+      {loading ? (
+        <div className="flex items-center justify-center py-10">
+          <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+        </div>
+      ) : items.length === 0 ? (
+        <Panel className="text-center py-10">
+          <Package className="w-8 h-8 mx-auto text-muted-foreground mb-3" />
+          <p className="text-sm text-muted-foreground">Aún no publicaste productos. Crea uno para que aparezca en el marketplace.</p>
+        </Panel>
+      ) : (
+        <div className="grid gap-3">
+          {items.map((p) => (
+            <Panel key={p.id} className="flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <div className="w-11 h-11 rounded-xl bg-primary/15 flex items-center justify-center">
+                  {p.type === "bot" ? <Bot className="w-5 h-5 text-primary" /> : <Package className="w-5 h-5 text-primary" />}
+                </div>
+                <div>
+                  <p className="font-semibold">{p.name}</p>
+                  <p className="text-xs text-muted-foreground">{priceLabel(p)} · {p.category}</p>
+                </div>
               </div>
-              <div>
-                <p className="font-semibold">{p.n}</p>
-                <p className="text-xs text-muted-foreground">{p.p} · Afiliados {p.a}</p>
-              </div>
-            </div>
-            <span className="text-xs font-semibold px-3 py-1.5 rounded-full bg-primary/10 text-primary">{p.v}</span>
-          </Panel>
-        ))}
-      </div>
+              <span className={`text-xs font-semibold px-3 py-1.5 rounded-full ${p.status === "published" ? "bg-green-400/15 text-green-400" : "bg-yellow-400/15 text-yellow-400"}`}>
+                {p.status === "published" ? "Publicado" : "Borrador"}
+              </span>
+            </Panel>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
 
 function CreateProductSection() {
+  const { user } = useAuth();
+  const [saving, setSaving] = useState(false);
+  const [form, setForm] = useState({
+    name: "", category: "Infoproductos & Cursos", price: "", period: "pago unico",
+    description: "", image: "", includes: "", requirements: "",
+  });
+  const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }));
+
+  const productCategories = MARKET_CATEGORIES.filter((c) => c !== "Todos" && c !== "Bots de Trading IA");
+
+  const publish = async () => {
+    if (!form.name.trim()) {
+      toast({ variant: "destructive", title: "Falta el nombre" });
+      return;
+    }
+    const price = Number(form.price);
+    if (!price || price <= 0) {
+      toast({ variant: "destructive", title: "Precio inválido", description: "Define un precio en USDT." });
+      return;
+    }
+    setSaving(true);
+    try {
+      const type = form.category === "Herramientas IA" ? "tool" : "info";
+      const record = {
+        name: form.name.trim(),
+        creator: user?.full_name || user?.email || "Crow Market",
+        type,
+        category: form.category,
+        description: form.description || "",
+        image: form.image || DEFAULT_PRODUCT_IMAGE,
+        tag: "Nuevo",
+        verified: false,
+        featured: false,
+        price,
+        period: form.period,
+        includes: form.includes ? form.includes.split("\n").map((s) => s.trim()).filter(Boolean) : [],
+        requirements: form.requirements ? form.requirements.split("\n").map((s) => s.trim()).filter(Boolean) : [],
+        status: "published",
+      };
+      await base44.entities.Product.create(record);
+      toast({ title: "Producto publicado", description: "Ya está visible en el marketplace tal cual lo configuraste." });
+      setForm({ name: "", category: "Infoproductos & Cursos", price: "", period: "pago unico", description: "", image: "", includes: "", requirements: "" });
+    } catch (err) {
+      toast({ variant: "destructive", title: "No se pudo publicar", description: err?.message || "Intenta nuevamente." });
+    } finally {
+      setSaving(false);
+    }
+  };
+
   return (
     <div className="space-y-4">
       <SectionHeader title="Crear producto" />
       <Panel>
         <div className="grid sm:grid-cols-2 gap-4">
-          <FormField label="Nombre del producto" placeholder="Ej. Apex BTC Pro" />
-          <FormField label="Precio (US$)" placeholder="25" type="number" />
-          <FormField label="Categoría" placeholder="Bot de Trading" />
-          <FormField label="Modelo de pago" placeholder="mensual / pago único" />
+          <div className="space-y-2">
+            <Label>Nombre del producto</Label>
+            <Input value={form.name} onChange={set("name")} placeholder="Ej. Funnel AI Pack" className="h-11 bg-secondary/50 border-border" />
+          </div>
+          <div className="space-y-2">
+            <Label>Categoría</Label>
+            <select
+              value={form.category}
+              onChange={set("category")}
+              className="h-11 w-full rounded-md border border-input bg-secondary/50 px-3 text-sm outline-none focus:border-primary"
+            >
+              {productCategories.map((c) => (
+                <option key={c} value={c}>{c}</option>
+              ))}
+            </select>
+          </div>
+          <div className="space-y-2">
+            <Label>Precio (USDT)</Label>
+            <Input type="number" value={form.price} onChange={set("price")} placeholder="49" className="h-11 bg-secondary/50 border-border" />
+          </div>
+          <div className="space-y-2">
+            <Label>Modelo de pago</Label>
+            <div className="flex gap-2">
+              {["pago unico", "mes"].map((p) => (
+                <button key={p} type="button" onClick={() => setForm((f) => ({ ...f, period: p }))}
+                  className={`flex-1 rounded-xl border px-3 py-2.5 text-sm transition ${form.period === p ? "border-primary bg-primary/15 text-primary" : "border-border text-muted-foreground hover:bg-secondary/50"}`}>
+                  {p === "pago unico" ? "Pago único" : "Mensual"}
+                </button>
+              ))}
+            </div>
+          </div>
         </div>
         <div className="mt-4">
           <Label className="mb-2 block">Descripción</Label>
           <textarea
+            value={form.description}
+            onChange={set("description")}
             placeholder="Describe tu producto..."
             rows={4}
             className="w-full rounded-xl bg-secondary/50 border border-border p-3 text-sm outline-none focus:border-primary resize-none"
           />
         </div>
-        <div className="mt-4 flex items-center justify-between rounded-xl bg-secondary/40 border border-border p-4">
-          <div>
-            <p className="font-semibold text-sm">Programa de afiliados</p>
-            <p className="text-xs text-muted-foreground">Activa afiliados y define comisión (15%–20%)</p>
-          </div>
-          <div className="flex items-center gap-3">
-            <Input placeholder="20" className="w-20 h-10 bg-secondary/50" defaultValue="20" />
-            <span className="text-sm text-muted-foreground">%</span>
+        <div className="mt-4 grid sm:grid-cols-2 gap-4">
+          <div className="space-y-2">
+            <Label>Imagen (URL) · opcional</Label>
+            <Input value={form.image} onChange={set("image")} placeholder="https://..." className="h-11 bg-secondary/50 border-border" />
           </div>
         </div>
-        <Button className="mt-5 h-11 px-6">Publicar producto</Button>
+        <div className="mt-4 grid sm:grid-cols-2 gap-4">
+          <div className="space-y-2">
+            <Label>Qué incluye (uno por línea)</Label>
+            <textarea value={form.includes} onChange={set("includes")} placeholder={"12 plantillas\n50+ copys"} rows={3}
+              className="w-full rounded-xl bg-secondary/50 border border-border p-3 text-sm outline-none focus:border-primary resize-none" />
+          </div>
+          <div className="space-y-2">
+            <Label>Requisitos (uno por línea)</Label>
+            <textarea value={form.requirements} onChange={set("requirements")} placeholder={"Navegador moderno"} rows={3}
+              className="w-full rounded-xl bg-secondary/50 border border-border p-3 text-sm outline-none focus:border-primary resize-none" />
+          </div>
+        </div>
+        <Button onClick={publish} disabled={saving} className="mt-5 h-11 px-6">
+          {saving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Plus className="w-4 h-4 mr-1" />}
+          {saving ? "Publicando..." : "Publicar producto"}
+        </Button>
       </Panel>
     </div>
   );

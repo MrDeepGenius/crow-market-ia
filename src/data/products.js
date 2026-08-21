@@ -229,3 +229,46 @@ export const SAMPLE_PRODUCTS = [
 ];
 
 export const MARKET_CATEGORIES = ["Todos", "Bots de Trading IA", "Infoproductos & Cursos", "Funnels & Plantillas", "Herramientas IA"];
+
+export const DEFAULT_PRODUCT_IMAGE = "https://images.unsplash.com/photo-1639779451976-8a1c7a7ec3b0?auto=format&fit=crop&w=800&q=80";
+
+// Convierte un registro de la entidad Product al shape que usan las tarjetas/modal del marketplace.
+export function normalizeEntityProduct(p) {
+  const curve = botCurve(Math.floor(Math.random() * 100) + 10, 0.9);
+  const base = {
+    id: p.id,
+    name: p.name,
+    creator: p.creator || "Crow Market",
+    type: p.type,
+    category: p.category,
+    description: p.description || "",
+    image: p.image || DEFAULT_PRODUCT_IMAGE,
+    gallery: p.image ? [p.image] : [],
+    tag: p.tag || "Nuevo",
+    verified: !!p.verified,
+    featured: !!p.featured,
+    rating: 0,
+    reviews: 0,
+    includes: p.includes || [],
+    requirements: p.requirements || [],
+    testimonials: [],
+    _isUserProduct: true,
+  };
+  if (p.type === "bot") {
+    return {
+      ...base,
+      winRate: Number(p.winRate) || 0,
+      timeframe: p.timeframe || "—",
+      risk: p.risk || "Medio",
+      pnl: Number(p.pnl) || 0,
+      curve,
+      buyPrice: Number(p.buyPrice) || 0,
+      rentPrice: Number(p.rentPrice) || 0,
+    };
+  }
+  return {
+    ...base,
+    price: Number(p.price) || 0,
+    period: p.period || "pago unico",
+  };
+}

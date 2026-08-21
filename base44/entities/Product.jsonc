@@ -1,0 +1,125 @@
+{
+  "name": "Product",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "Nombre del producto o bot"
+    },
+    "creator": {
+      "type": "string",
+      "description": "Nombre del creador (auto: full_name del usuario)"
+    },
+    "type": {
+      "type": "string",
+      "enum": [
+        "bot",
+        "info",
+        "tool"
+      ],
+      "description": "bot = bot de trading, info = infoproducto/curso, tool = herramienta IA"
+    },
+    "category": {
+      "type": "string",
+      "description": "Categoria del marketplace"
+    },
+    "description": {
+      "type": "string",
+      "description": "Descripcion publica del producto"
+    },
+    "image": {
+      "type": "string",
+      "description": "URL de la imagen principal"
+    },
+    "tag": {
+      "type": "string",
+      "default": "Nuevo",
+      "description": "Etiqueta visible (Nuevo, Validado, Bestseller, etc.)"
+    },
+    "verified": {
+      "type": "boolean",
+      "default": false,
+      "description": "Lo marca el admin tras validacion"
+    },
+    "featured": {
+      "type": "boolean",
+      "default": false,
+      "description": "Destacado en el marketplace"
+    },
+    "buyPrice": {
+      "type": "number",
+      "description": "Precio de compra unica (bots)"
+    },
+    "rentPrice": {
+      "type": "number",
+      "description": "Precio de alquiler mensual (bots)"
+    },
+    "price": {
+      "type": "number",
+      "description": "Precio para info/tool"
+    },
+    "period": {
+      "type": "string",
+      "enum": [
+        "pago unico",
+        "mes"
+      ],
+      "default": "pago unico",
+      "description": "Periodo de facturacion (info/tool)"
+    },
+    "includes": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Que incluye"
+    },
+    "requirements": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Requisitos"
+    },
+    "winRate": {
+      "type": "number",
+      "description": "Win rate % (bots)"
+    },
+    "timeframe": {
+      "type": "string",
+      "description": "Timeframe y par (bots)"
+    },
+    "risk": {
+      "type": "string",
+      "enum": [
+        "Bajo",
+        "Medio",
+        "Alto"
+      ],
+      "description": "Nivel de riesgo (bots)"
+    },
+    "pnl": {
+      "type": "number",
+      "description": "P&L 30d % (bots)"
+    },
+    "config": {
+      "type": "object",
+      "description": "Configuracion tecnica del bot (generada por IA o manual)"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "draft",
+        "published"
+      ],
+      "default": "published",
+      "description": "published = visible en el marketplace"
+    }
+  },
+  "required": [
+    "name",
+    "type",
+    "category",
+    "status"
+  ]
+}
