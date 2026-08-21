@@ -63,8 +63,7 @@ export default function PaymentLink({ product, mode, price }) {
     }
   };
 
-  const fee = data ? data.fee : Number((price * 0.05).toFixed(2));
-  const total = data ? data.total : Number((price + fee).toFixed(2));
+  const total = data ? data.total : Number(price.toFixed(2));
 
   return (
     <div className="mt-6 rounded-2xl border border-primary/30 bg-primary/5 p-4 space-y-4">
@@ -93,10 +92,6 @@ export default function PaymentLink({ product, mode, price }) {
           <span className="text-muted-foreground">{mode === "rent" ? "Alquiler mensual" : "Precio"}</span>
           <span className="font-medium">${price.toFixed(2)}</span>
         </div>
-        <div className="flex justify-between">
-          <span className="text-muted-foreground">Comision de servicio (5%)</span>
-          <span className="font-medium">${fee.toFixed(2)}</span>
-        </div>
         <div className="border-t border-border pt-1.5 flex justify-between">
           <span className="font-semibold">Total a transferir</span>
           <span className="font-bold text-primary text-base">${total.toFixed(2)} USDT</span>
@@ -109,7 +104,7 @@ export default function PaymentLink({ product, mode, price }) {
             <Button className="w-full h-11" onClick={handleGenerate}>
               <Link2 className="w-4 h-4 mr-2" /> Generar link de pago
             </Button>
-            <p className="text-[10px] text-muted-foreground text-center mt-2">La comision de servicio la paga el comprador.</p>
+            <p className="text-[10px] text-muted-foreground text-center mt-2">Los fees de red los asume el comprador en su wallet.</p>
           </motion.div>
         )}
 

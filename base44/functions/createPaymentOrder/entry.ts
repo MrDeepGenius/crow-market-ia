@@ -11,8 +11,6 @@ const WALLETS = {
   TRC20: 'TJNDeA6piMwsqoHg6vWW2vWtNV3JSwZp5M',
 };
 
-const FEE_RATE = 0.05; // 5% comision de servicio pagada por el comprador
-
 export default async function(req) {
   try {
     const base44 = createClientFromRequest(req);
@@ -37,16 +35,13 @@ export default async function(req) {
       return Response.json({ error: 'Monto invalido.' }, { status: 400 });
     }
 
-    const fee = Number((amt * FEE_RATE).toFixed(2));
-    const total = Number((amt + fee).toFixed(2));
-
     const order = await base44.entities.PaymentOrder.create({
       product_id: productId,
       product_name: productName,
       mode,
       amount: amt,
-      fee,
-      total,
+      fee: 0,
+      total: amt,
       network,
       status: 'pending',
     });
@@ -54,8 +49,8 @@ export default async function(req) {
     return Response.json({
       orderId: order.id,
       amount: amt,
-      fee,
-      total,
+      fee: 0,
+      total: amt,
       network,
       wallets: WALLETS,
       wallet: WALLETS[network],
