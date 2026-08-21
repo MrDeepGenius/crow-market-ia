@@ -2,10 +2,11 @@ import React, { useState } from "react";
 import { motion } from "framer-motion";
 import {
   LayoutDashboard, Package, PlusCircle, Cpu, Bot, History, FlaskConical, Store,
-  Users, TrendingUp, Wallet, ArrowDownToLine, BarChart3, Settings, Plus, DollarSign, Activity,
+  Users, TrendingUp, Wallet, ArrowDownToLine, BarChart3, Settings, Plus, DollarSign, Activity, Sparkles,
 } from "lucide-react";
 import DashboardShell from "@/components/dashboard/DashboardShell";
 import CreateBot from "@/components/creator/CreateBot";
+import AIChat from "@/components/creator/AIChat";
 import { AreaChart, Area, ResponsiveContainer, Tooltip, XAxis } from "recharts";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -21,6 +22,7 @@ const navItems = [
   { id: "backtest", label: "Backtesting", icon: History },
   { id: "paper", label: "Paper Trading", icon: FlaskConical },
   { id: "marketplace", label: "Marketplace", icon: Store },
+  { id: "ai-chat", label: "Asistente IA", icon: Sparkles },
   { id: "affiliates", label: "Afiliados", icon: Users },
   { id: "sales", label: "Ventas", icon: TrendingUp },
   { id: "commissions", label: "Comisiones", icon: DollarSign },
@@ -74,6 +76,8 @@ function SectionRenderer({ active, onSaved }) {
       return <CommissionsSection />;
     case "stats":
       return <StatsSection />;
+    case "ai-chat":
+      return <AIChat />;
     case "marketplace":
       return <Placeholder title="Marketplace" desc="Explora el marketplace completo desde la navegación pública." />;
     case "settings":
