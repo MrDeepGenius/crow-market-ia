@@ -9,6 +9,10 @@ import CreateBot from "@/components/creator/CreateBot";
 import AIChat from "@/components/creator/AIChat";
 import PlanGate from "@/components/creator/PlanGate";
 import RenewalBanner from "@/components/creator/RenewalBanner";
+import { useAuth } from "@/lib/AuthContext";
+import { purchasePlan, creditWallet } from "@/lib/purchase";
+import { CREATOR_PLANS, USDT_DEPOSIT } from "@/lib/plans";
+import { toast } from "@/components/ui/use-toast";
 import { AreaChart, Area, ResponsiveContainer, Tooltip, XAxis } from "recharts";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -331,24 +335,108 @@ function PaperSection() {
 }
 
 function WalletSection() {
+  const { user, checkUserAuth } = useAuth();
+  const [buying, setBuying] = useState(null);
+  const [creditAmount, setCreditAmount] = useState("");
+  const [crediting, setCrediting] = useState(false);
+
+  const balance = Number(user?.wallet_balance || 0);
+  const planLabel = user?.plan_tier && user.plan_tier !== "free"
+    ? user.plan_tier.charAt(0).toUpperCase() + user.plan_tier.slice(1)
+    : "Gratis";
+
+  const handlePurchase = async (plan) => {
+    setBuying(plan.id);
+    try {
+      await purchasePlan(plan.id);
+      toast({ title: `Plan ${plan.name} activado`, description: `Se debitaron $${plan.priceUsd} USDT.` });
+      checkUserAuth();
+    } catch (err) {
+      toast({ variant: "destructive", title: "No se pudo completar", description: err?.message || "Saldo insuficiente." });
+    } finally {
+      setBuying(null);
+    }
+  };
+
+  const handleCredit = async () => {
+    const amt = Number(creditAmount);
+    if (!amt || amt <= 0) return;
+    setCrediting(true);
+    try {
+      await creditWallet(user.id, amt);
+      toast({ title: "Saldo acreditado", description: `$${amt} USDT cargados a tu billetera.` });
+      setCreditAmount("");
+      checkUserAuth();
+    } catch (err) {
+      toast({ variant: "destructive", title: "Error", description: err?.message || "No se pudo acreditar." });
+    } finally {
+      setCrediting(false);
+    }
+  };
+
   return (
     <div className="space-y-4">
-      <SectionHeader title="Wallet" />
+      <SectionHeader title="Wallet USDT" />
       <div className="grid sm:grid-cols-3 gap-4">
-        <BalanceCard label="Saldo disponible" value="$4,820" tone="primary" />
-        <BalanceCard label="Saldo pendiente" value="$1,240" tone="yellow" />
-        <BalanceCard label="Saldo retenido" value="$320" tone="muted" />
+        <BalanceCard label="Saldo disponible (USDT)" value={`$${balance.toFixed(2)}`} tone="primary" />
+        <BalanceCard label="Plan activo" value={planLabel} tone="yellow" />
+        <BalanceCard label="Vencimiento" value={user?.plan_expires_at ? new Date(user.plan_expires_at).toLocaleDateString() : "—"} tone="muted" />
       </div>
+
       <Panel>
-        <PanelHeader title="Historial reciente" />
-        <div className="space-y-2">
-          {["Venta directa · Apex BTC Pro +$25", "Comisión afiliado · Funnel AI Pack +$9.80", "Retiro solicitado -$1,000"].map((h, i) => (
-            <div key={i} className="flex items-center justify-between text-sm py-2 border-b border-border last:border-0">
-              <span className="text-muted-foreground">{h}</span>
-              <Activity className="w-3.5 h-3.5 text-muted-foreground" />
-            </div>
-          ))}
+        <PanelHeader title="Recargar billetera (USDT · TRC20)" />
+        <div className="rounded-xl bg-secondary/40 border border-border p-4 text-sm space-y-2">
+          <p className="text-muted-foreground">
+            Envía USDT por red <strong className="text-foreground">TRC20 (Tron)</strong> a esta dirección:
+          </p>
+          <code className="block text-xs font-mono bg-background/60 p-3 rounded-lg break-all">{USDT_DEPOSIT.address}</code>
+          <p className="text-xs text-muted-foreground">{USDT_DEPOSIT.note}</p>
         </div>
+        {user?.role === "admin" && (
+          <div className="mt-4 flex items-end gap-3 rounded-xl bg-primary/5 border border-primary/20 p-4">
+            <div className="flex-1">
+              <Label>Acreditar USDT (admin · prueba)</Label>
+              <Input
+                type="number"
+                value={creditAmount}
+                onChange={(e) => setCreditAmount(e.target.value)}
+                placeholder="50"
+                className="mt-2 h-10 bg-secondary/50"
+              />
+            </div>
+            <Button onClick={handleCredit} disabled={crediting || !creditAmount} className="h-10">
+              {crediting ? "Acreditando..." : "Acreditar"}
+            </Button>
+          </div>
+        )}
+      </Panel>
+
+      <Panel>
+        <PanelHeader title="Comprar plan con saldo USDT" />
+        {balance < 30 ? (
+          <p className="text-sm text-muted-foreground">
+            Necesitas saldo en tu billetera para comprar un plan. Recarga primero con USDT (TRC20).
+          </p>
+        ) : (
+          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
+            {CREATOR_PLANS.map((p) => (
+              <div key={p.id} className="rounded-xl border border-border p-4">
+                <p className="font-semibold">{p.name}</p>
+                <p className="text-lg font-bold mt-1">
+                  ${p.priceUsd} <span className="text-xs font-normal text-muted-foreground">/{p.periodLabel}</span>
+                </p>
+                <Button
+                  size="sm"
+                  className="mt-3 w-full"
+                  disabled={buying === p.id || balance < p.priceUsd}
+                  onClick={() => handlePurchase(p)}
+                >
+                  {buying === p.id ? "Procesando..." : "Comprar"}
+                </Button>
+              </div>
+            ))}
+          </div>
+        )}
       </Panel>
     </div>
   );

@@ -1,8 +1,11 @@
-import React from "react";
+import React, { useState } from "react";
 import { motion } from "framer-motion";
 import { Link } from "react-router-dom";
-import { Check, Crown, Zap, Sparkles, Lock } from "lucide-react";
+import { Check, Crown, Zap, Sparkles, Lock, Wallet, Loader2 } from "lucide-react";
 import { CREATOR_PLANS } from "@/lib/plans";
+import { useAuth } from "@/lib/AuthContext";
+import { purchasePlan } from "@/lib/purchase";
+import { toast } from "@/components/ui/use-toast";
 
 const fadeUp = {
   hidden: { opacity: 0, y: 24 },
@@ -12,6 +15,29 @@ const fadeUp = {
 const planIcons = { bronce: Zap, plata: Sparkles, oro: Crown, diamante: Crown };
 
 export default function PricingSection() {
+  const { isAuthenticated, checkUserAuth } = useAuth();
+  const [buying, setBuying] = useState(null);
+
+  const handlePurchase = async (plan) => {
+    setBuying(plan.id);
+    try {
+      await purchasePlan(plan.id);
+      toast({
+        title: `Plan ${plan.name} activado`,
+        description: `Se debitaron $${plan.priceUsd} USDT de tu billetera.`,
+      });
+      checkUserAuth();
+    } catch (err) {
+      toast({
+        variant: "destructive",
+        title: "No se pudo completar",
+        description: err?.message || "Saldo insuficiente o error al comprar el plan.",
+      });
+    } finally {
+      setBuying(null);
+    }
+  };
+
   return (
     <section id="pricing" className="py-20">
       <div className="mx-auto max-w-7xl px-4 sm:px-6">
@@ -19,7 +45,7 @@ export default function PricingSection() {
           <p className="text-xs font-semibold tracking-widest uppercase text-primary mb-3">Licencias de Creador</p>
           <h2 className="font-heading font-extrabold text-3xl sm:text-4xl tracking-tight">Planes para crear y publicar</h2>
           <p className="mt-3 text-muted-foreground max-w-xl mx-auto">
-            El acceso gratuito es solo para explorar el marketplace. Para crear bots, productos y publicar necesitas una licencia de creador activa.
+            El acceso gratuito es solo para explorar el marketplace. Para crear bots, productos y publicar necesitas una licencia de creador activa. Pagos en USDT desde tu billetera.
           </p>
         </div>
 
@@ -33,19 +59,27 @@ export default function PricingSection() {
 
         <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-5">
           {CREATOR_PLANS.map((plan, i) => (
-            <PlanCard key={plan.id} plan={plan} i={i} />
+            <PlanCard
+              key={plan.id}
+              plan={plan}
+              i={i}
+              isAuthenticated={isAuthenticated}
+              buying={buying === plan.id}
+              onPurchase={() => handlePurchase(plan)}
+            />
           ))}
         </div>
 
-        <p className="text-center text-xs text-muted-foreground mt-8">
-          Renovación manual o automática · Se cobra al vencer el plan
+        <p className="text-center text-xs text-muted-foreground mt-8 flex items-center justify-center gap-1.5">
+          <Wallet className="w-3.5 h-3.5" />
+          Pago en USDT (TRC20) desde la billetera de la plataforma · Renovación manual o automática al vencer
         </p>
       </div>
     </section>
   );
 }
 
-function PlanCard({ plan, i }) {
+function PlanCard({ plan, i, isAuthenticated, buying, onPurchase }) {
   const Icon = planIcons[plan.id] || Sparkles;
   return (
     <motion.div
@@ -84,12 +118,23 @@ function PlanCard({ plan, i }) {
         <Feature>Backtesting y paper trading</Feature>
       </ul>
 
-      <Link
-        to="/register"
-        className={`inline-flex items-center justify-center h-11 rounded-xl font-semibold text-sm transition-colors ${plan.highlight ? "bg-primary text-primary-foreground hover:bg-primary/90" : "glass hover:bg-secondary/60"}`}
-      >
-        Elegir {plan.name}
-      </Link>
+      {isAuthenticated ? (
+        <button
+          onClick={onPurchase}
+          disabled={buying}
+          className={`inline-flex items-center justify-center gap-2 h-11 rounded-xl font-semibold text-sm transition-colors disabled:opacity-60 ${plan.highlight ? "bg-primary text-primary-foreground hover:bg-primary/90" : "glass hover:bg-secondary/60"}`}
+        >
+          {buying ? <Loader2 className="w-4 h-4 animate-spin" /> : <Wallet className="w-4 h-4" />}
+          {buying ? "Procesando..." : "Comprar con USDT"}
+        </button>
+      ) : (
+        <Link
+          to="/register"
+          className={`inline-flex items-center justify-center h-11 rounded-xl font-semibold text-sm transition-colors ${plan.highlight ? "bg-primary text-primary-foreground hover:bg-primary/90" : "glass hover:bg-secondary/60"}`}
+        >
+          Elegir {plan.name}
+        </Link>
+      )}
     </motion.div>
   );
 }

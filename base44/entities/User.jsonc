@@ -51,6 +51,11 @@
       "type": "boolean",
       "description": "Renovacion automatica del plan al vencer",
       "default": false
+    },
+    "wallet_balance": {
+      "type": "number",
+      "description": "Saldo en USDT (TRC20) disponible en la billetera del creador para pagar planes.",
+      "default": 0
     }
   },
   "required": [

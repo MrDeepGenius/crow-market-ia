@@ -59,6 +59,14 @@ export const CREATOR_PLANS = [
   },
 ];
 
+// Billetera USDT (TRC20) para recargar saldo y pagar planes.
+// Reemplazar esta direccion por tu wallet USDT TRC20 real.
+export const USDT_DEPOSIT = {
+  network: "TRC20 (Tron)",
+  address: "TXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX",
+  note: "Envía USDT por red TRC20. El saldo se acredita tras confirmar el depósito (1 confirmación).",
+};
+
 export function getPlan(tier) {
   return CREATOR_PLANS.find((p) => p.id === tier) || null;
 }
