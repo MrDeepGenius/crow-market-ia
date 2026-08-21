@@ -24,6 +24,11 @@
     "last_name": {
       "type": "string",
       "description": "User last name"
+    },
+    "ai_credits": {
+      "type": "number",
+      "description": "Mensajes de IA disponibles. 1 credito = 1 mensaje. 30 gratis al registrarse.",
+      "default": 0
     }
   },
   "required": [

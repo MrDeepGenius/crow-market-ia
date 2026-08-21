@@ -71,6 +71,7 @@ export default function Register() {
           first_name: firstName,
           last_name: lastName,
           account_type: accountType || "creator",
+          ai_credits: 30, // Regalo de bienvenida: 30 mensajes de IA gratis.
         });
       } catch {
         /* non-blocking */
