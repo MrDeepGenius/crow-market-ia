@@ -1,0 +1,67 @@
+{
+  "name": "PaymentOrder",
+  "type": "object",
+  "properties": {
+    "product_id": {
+      "type": "string",
+      "description": "ID del producto comprado/alquilado"
+    },
+    "product_name": {
+      "type": "string",
+      "description": "Nombre del producto"
+    },
+    "mode": {
+      "type": "string",
+      "enum": [
+        "rent",
+        "buy"
+      ],
+      "description": "Alquiler mensual o compra unica"
+    },
+    "amount": {
+      "type": "number",
+      "description": "Precio base del producto en USDT"
+    },
+    "fee": {
+      "type": "number",
+      "description": "Comision de servicio que paga el comprador (USDT)"
+    },
+    "total": {
+      "type": "number",
+      "description": "Total a transferir: amount + fee (USDT)"
+    },
+    "network": {
+      "type": "string",
+      "enum": [
+        "BEP20",
+        "TRC20"
+      ],
+      "description": "Red USDT seleccionada para el pago"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "pending",
+        "paid",
+        "confirmed",
+        "cancelled"
+      ],
+      "default": "pending",
+      "description": "Estado de la orden de pago"
+    },
+    "tx_hash": {
+      "type": "string",
+      "description": "Hash de la transaccion on-chain (opcional)"
+    }
+  },
+  "required": [
+    "product_id",
+    "product_name",
+    "mode",
+    "amount",
+    "fee",
+    "total",
+    "network",
+    "status"
+  ]
+}

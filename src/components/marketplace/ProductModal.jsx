@@ -3,8 +3,9 @@ import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Image } from "@/components/ui/image";
 import { Button } from "@/components/ui/button";
-import { Star, ShieldCheck, Check, TrendingUp, Activity, Gauge, Wallet, CreditCard, PlayCircle } from "lucide-react";
+import { Star, ShieldCheck, Check, TrendingUp, Activity, Gauge, PlayCircle } from "lucide-react";
 import Sparkline from "@/components/marketplace/Sparkline";
+import PaymentLink from "@/components/marketplace/PaymentLink";
 
 const riskTone = {
   Bajo: "text-emerald-400 bg-emerald-400/10 border-emerald-400/30",
@@ -23,7 +24,7 @@ function Stars({ n }) {
 }
 
 export default function ProductModal({ product, onClose }) {
-  const [pay, setPay] = useState(product?.type === "bot" ? "rent" : "card");
+  const [pay, setPay] = useState(product?.type === "bot" ? "rent" : "buy");
   if (!product) return null;
   const isBot = product.type === "bot";
   const price = isBot ? (pay === "rent" ? product.rentPrice : product.buyPrice) : product.price;
@@ -156,9 +157,8 @@ export default function ProductModal({ product, onClose }) {
             </TabsContent>
           </Tabs>
 
-          {/* Checkout */}
-          <div className="mt-6 rounded-2xl border border-primary/30 bg-primary/5 p-4">
-            <p className="text-xs font-semibold text-primary mb-3">Checkout directo</p>
+          {/* Checkout con link de pago USDT */}
+          <div className="mt-6">
             {isBot && (
               <div className="flex gap-2 mb-3">
                 <button
@@ -175,23 +175,7 @@ export default function ProductModal({ product, onClose }) {
                 </button>
               </div>
             )}
-            <div className="flex gap-2 mb-3">
-              <button className={`flex-1 rounded-xl border px-3 py-2 text-xs flex items-center justify-center gap-1.5 transition ${pay === "usdt" || (!isBot && pay === "card") ? "border-primary bg-primary/15 text-primary" : "border-border text-muted-foreground"}`} onClick={() => setPay(isBot ? "usdt" : "card")}>
-                <Wallet className="w-3.5 h-3.5" /> USDT
-              </button>
-              <button className={`flex-1 rounded-xl border px-3 py-2 text-xs flex items-center justify-center gap-1.5 transition ${pay === "card" ? "border-primary bg-primary/15 text-primary" : "border-border text-muted-foreground"}`} onClick={() => setPay("card")}>
-                <CreditCard className="w-3.5 h-3.5" /> Tarjeta
-              </button>
-            </div>
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-[11px] text-muted-foreground">Total a pagar</p>
-                <p className="text-2xl font-bold">${price}</p>
-              </div>
-              <Button className="h-11 px-6">
-                {isBot ? (pay === "rent" ? "Alquilar ahora" : "Comprar ahora") : "Obtener acceso"}
-              </Button>
-            </div>
+            <PaymentLink product={product} mode={isBot ? pay : "buy"} price={price} />
           </div>
         </div>
       </DialogContent>
