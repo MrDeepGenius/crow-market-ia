@@ -48,7 +48,6 @@ export default function Home() {
       <section className="relative pt-32 sm:pt-40 pb-20">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 grid lg:grid-cols-2 gap-12 items-center">
           <motion.div initial="hidden" animate="show" variants={fadeUp}>
-            <BrandLogo size="2xl" className="mb-6" />
             <div className="inline-flex items-center gap-2 rounded-full glass px-3 py-1.5 text-xs text-muted-foreground mb-6">
               <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
               Economía de creadores + IA + Trading
