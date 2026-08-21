@@ -381,6 +381,34 @@ function AffiliatesSection() {
         <StatCard label="Comisiones pagadas" value="$1,980" trend="+7%" icon={DollarSign} />
       </div>
       <Panel>
+        <PanelHeader title="Mis afiliados" />
+        <div className="space-y-2">
+          {[
+            { n: "Lucía Fernández", p: "Apex BTC Pro", v: 42, c: "$420", s: "Activo" },
+            { n: "Martín Gómez", p: "Funnel AI Pack", v: 31, c: "$301", s: "Activo" },
+            { n: "Sofía Ruiz", p: "Apex BTC Pro", v: 28, c: "$280", s: "Activo" },
+            { n: "Diego Pérez", p: "Risk Guardian", v: 19, c: "$152", s: "Pausado" },
+            { n: "Valentina Sosa", p: "Funnel AI Pack", v: 22, c: "$215", s: "Activo" },
+          ].map((a) => (
+            <div key={a.n} className="flex items-center justify-between py-3 border-b border-border last:border-0">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-full bg-primary/15 flex items-center justify-center text-primary font-semibold text-sm">
+                  {a.n.split(" ").map((w) => w[0]).join("").slice(0, 2)}
+                </div>
+                <div>
+                  <p className="text-sm font-semibold">{a.n}</p>
+                  <p className="text-xs text-muted-foreground">{a.p} · {a.v} ventas</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-4">
+                <span className="text-sm font-semibold text-primary">{a.c}</span>
+                <span className={`text-[11px] font-semibold px-2.5 py-1 rounded-full ${a.s === "Activo" ? "bg-green-400/15 text-green-400" : "bg-yellow-400/15 text-yellow-400"}`}>{a.s}</span>
+              </div>
+            </div>
+          ))}
+        </div>
+      </Panel>
+      <Panel>
         <p className="text-sm text-muted-foreground">
           Activa o desactiva el programa de afiliados por producto. Define la comisión permitida (15%–20%).
         </p>
