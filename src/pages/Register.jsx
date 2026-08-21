@@ -164,6 +164,13 @@ export default function Register() {
             desc="Crear y vender productos, herramientas y bots."
           />
           <TypeCard
+            active={accountType === "affiliate"}
+            onClick={() => setAccountType("affiliate")}
+            icon={Megaphone}
+            title="Afiliado"
+            desc="Promover bots y productos, generar landings y ganar comisiones."
+          />
+          <TypeCard
             active={accountType === "viewer"}
             onClick={() => setAccountType("viewer")}
             icon={Store}
