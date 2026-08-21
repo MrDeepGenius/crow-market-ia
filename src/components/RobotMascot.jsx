@@ -3,7 +3,7 @@ import { motion } from "framer-motion";
 import { Image } from "@/components/ui/image";
 
 const ROBOT_URL =
-  "https://media.base44.com/images/public/user_6a87bc4561ec69e23866d03e/b4c4a65c6_ChatGPTImage21ago202600_31_24.png";
+  "https://media.base44.com/images/public/6a87c70aaf7f69d145da0bdf/20b721461_ChatGPTImage21ago202600_31_24.png";
 
 export default function RobotMascot({ size = "md", wave = true }) {
   const dims = {

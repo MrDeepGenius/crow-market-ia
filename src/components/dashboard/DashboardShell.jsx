@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "@/lib/AuthContext";
 import { Sparkles, LogOut, Menu, X, Bell, Search } from "lucide-react";
+import ThemeToggle from "@/components/ThemeToggle";
 
 export default function DashboardShell({ title, navItems, active, onSelect, children }) {
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -88,6 +89,7 @@ export default function DashboardShell({ title, navItems, active, onSelect, chil
               <Search className="w-4 h-4" />
               <input placeholder="Buscar..." className="bg-transparent outline-none w-32 placeholder:text-muted-foreground" />
             </div>
+            <ThemeToggle />
             <button className="w-9 h-9 rounded-xl bg-secondary/50 border border-border flex items-center justify-center text-muted-foreground hover:text-foreground relative">
               <Bell className="w-4 h-4" />
               <span className="absolute top-2 right-2 w-1.5 h-1.5 rounded-full bg-primary" />

@@ -2,11 +2,15 @@ import React from "react";
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Sparkles } from "lucide-react";
-import RobotMascot from "@/components/RobotMascot";
+import { Image } from "@/components/ui/image";
+import ThemeToggle from "@/components/ThemeToggle";
+
+const ROBOT_URL =
+  "https://media.base44.com/images/public/6a87c70aaf7f69d145da0bdf/20b721461_ChatGPTImage21ago202600_31_24.png";
 
 /**
  * Premium split auth layout.
- * variant="robot" -> robot mascot on the left, form on the right (login/register).
+ * variant="robot" -> robot image as a full-bleed background on the left, form on the right.
  * variant="center" -> centered glass card (forgot/reset).
  */
 export default function AuthLayout({
@@ -21,6 +25,9 @@ export default function AuthLayout({
     return (
       <div className="relative min-h-screen flex items-center justify-center px-4 py-10 overflow-hidden">
         <Backdrop />
+        <div className="absolute top-4 right-4 z-20">
+          <ThemeToggle />
+        </div>
         <div className="relative z-10 w-full max-w-md">
           <BrandMark className="mb-8" />
           <div className="glass-strong rounded-3xl p-8 shadow-2xl">
@@ -38,42 +45,59 @@ export default function AuthLayout({
     <div className="relative min-h-screen grid lg:grid-cols-2 overflow-hidden">
       <Backdrop />
 
-      {/* Left: robot + brand */}
-      <div className="relative z-10 hidden lg:flex flex-col justify-between p-12">
-        <Link to="/" className="inline-flex items-center gap-2.5 group">
-          <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-primary to-fuchsia-600 flex items-center justify-center glow-violet">
-            <Sparkles className="w-5 h-5 text-white" />
-          </div>
-          <span className="font-heading font-bold text-xl tracking-tight">NEXUS</span>
-        </Link>
-
-        <div className="flex flex-col items-center justify-center flex-1 -mt-10">
-          <motion.div
-            initial={{ opacity: 0, y: 24 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.7, ease: "easeOut" }}
-          >
-            <RobotMascot size="xl" />
-          </motion.div>
-          {robotCaption && (
-            <motion.p
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.6 }}
-              className="mt-8 text-center text-muted-foreground text-sm max-w-xs"
-            >
-              {robotCaption}
-            </motion.p>
-          )}
+      {/* Left: robot as full-bleed background */}
+      <div className="relative z-10 hidden lg:block overflow-hidden">
+        <div className="absolute inset-0">
+          <Image
+            src={ROBOT_URL}
+            alt="Asistente de IA NEXUS"
+            className="w-full h-full"
+            fittingType="fill"
+          />
         </div>
+        {/* violet ambient overlays */}
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_35%,hsl(276_91%_55%_/_0.18),transparent_60%)]" />
+        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-transparent to-background/80" />
+        <div className="absolute inset-0 grid-bg opacity-20" />
 
-        <div className="text-xs text-muted-foreground/70">
-          © 2026 NEXUS · Infraestructura tecnológica para creadores y afiliados
+        <div className="relative z-10 h-full flex flex-col justify-between p-12">
+          <div className="flex items-center justify-between">
+            <Link to="/" className="inline-flex items-center gap-2.5 group">
+              <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-primary to-fuchsia-600 flex items-center justify-center glow-violet">
+                <Sparkles className="w-5 h-5 text-white" />
+              </div>
+              <span className="font-heading font-bold text-xl tracking-tight text-white">NEXUS</span>
+            </Link>
+            <ThemeToggle />
+          </div>
+
+          <motion.div
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.5, duration: 0.7 }}
+            className="max-w-sm"
+          >
+            {robotCaption && (
+              <p className="text-white/90 text-lg font-medium leading-relaxed">
+                {robotCaption}
+              </p>
+            )}
+            <p className="mt-3 text-sm text-white/60">
+              IA · Trading · Creadores · Afiliados
+            </p>
+          </motion.div>
+
+          <div className="text-xs text-white/50">
+            © 2026 NEXUS · Infraestructura tecnológica para creadores y afiliados
+          </div>
         </div>
       </div>
 
       {/* Right: form */}
       <div className="relative z-10 flex items-center justify-center px-6 py-12 sm:px-12">
+        <div className="absolute top-4 right-4 lg:hidden">
+          <ThemeToggle />
+        </div>
         <div className="w-full max-w-md">
           <Link to="/" className="lg:hidden inline-flex items-center gap-2.5 mb-8">
             <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-primary to-fuchsia-600 flex items-center justify-center glow-violet">
@@ -81,6 +105,24 @@ export default function AuthLayout({
             </div>
             <span className="font-heading font-bold text-xl tracking-tight">NEXUS</span>
           </Link>
+
+          {/* compact robot on mobile */}
+          <div className="lg:hidden mb-8 flex justify-center">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.6 }}
+              className="relative w-40 h-40 rounded-3xl overflow-hidden border border-primary/20"
+            >
+              <div className="absolute inset-0 rounded-full bg-[radial-gradient(circle_at_center,hsl(276_91%_60%_/_0.45),transparent_65%)] blur-2xl animate-pulse-glow" />
+              <Image
+                src={ROBOT_URL}
+                alt="Asistente de IA NEXUS"
+                className="relative w-full h-full object-contain drop-shadow-[0_0_30px_hsl(276_91%_60%_/_0.5)]"
+                fittingType="fit"
+              />
+            </motion.div>
+          </div>
 
           <motion.div
             initial={{ opacity: 0, y: 16 }}

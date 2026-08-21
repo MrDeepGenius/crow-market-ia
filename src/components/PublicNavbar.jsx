@@ -1,6 +1,7 @@
 import React from "react";
 import { Link } from "react-router-dom";
 import { Sparkles } from "lucide-react";
+import ThemeToggle from "@/components/ThemeToggle";
 
 export default function PublicNavbar() {
   return (
@@ -21,6 +22,7 @@ export default function PublicNavbar() {
           </nav>
 
           <div className="flex items-center gap-2 sm:gap-3">
+            <ThemeToggle />
             <Link
               to="/login"
               className="text-sm font-medium text-muted-foreground hover:text-foreground px-3 sm:px-4 py-2 rounded-xl hover:bg-secondary/60 transition-colors"

@@ -1,6 +1,15 @@
 <!doctype html>
-<html lang="es">
+<html lang="es" class="dark">
   <head>
+    <script>
+      (function () {
+        try {
+          var t = localStorage.getItem("nexus-theme") || "dark";
+          var d = document.documentElement;
+          if (t === "dark") d.classList.add("dark"); else d.classList.remove("dark");
+        } catch (e) {}
+      })();
+    </script>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
