@@ -39,14 +39,12 @@ export default function PlanGate({ children, title = "Necesitas una licencia de 
               <span className="text-xs font-normal text-muted-foreground">/{p.periodLabel}</span>
             </p>
             <ul className="mt-3 space-y-1.5 text-xs text-muted-foreground">
-              <li className="flex gap-1.5">
-                <Check className="w-3.5 h-3.5 text-primary" />
-                {p.aiCredits} msj IA
-              </li>
-              <li className="flex gap-1.5">
-                <Check className="w-3.5 h-3.5 text-primary" />
-                {p.maxBots} bots/productos
-              </li>
+              {p.features.slice(0, 5).map((f) => (
+                <li key={f} className="flex gap-1.5">
+                  <Check className="w-3.5 h-3.5 text-primary shrink-0" />
+                  {f}
+                </li>
+              ))}
             </ul>
           </div>
         ))}

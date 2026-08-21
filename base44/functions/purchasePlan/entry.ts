@@ -7,9 +7,9 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
 
 const PLANS = {
   bronce: { priceUsd: 30, periodDays: 30, aiCredits: 30 },
-  plata: { priceUsd: 50, periodDays: 90, aiCredits: 60 },
-  oro: { priceUsd: 100, periodDays: 90, aiCredits: 100 },
-  diamante: { priceUsd: 200, periodDays: 180, aiCredits: 200 },
+  plata: { priceUsd: 75, periodDays: 90, aiCredits: 100 },
+  oro: { priceUsd: 150, periodDays: 90, aiCredits: 250 },
+  diamante: { priceUsd: 300, periodDays: 180, aiCredits: 500 },
 };
 
 export default async function(req) {

@@ -110,13 +110,16 @@ function PlanCard({ plan, i, isAuthenticated, buying, onPurchase }) {
         <span className="text-sm text-muted-foreground"> / {plan.periodLabel}</span>
       </div>
 
-      <ul className="space-y-2.5 text-sm mb-6 flex-1">
-        <Feature>{plan.aiCredits} mensajes de IA</Feature>
-        <Feature>{plan.maxBots} bots o productos</Feature>
-        <Feature>{plan.maxPublications} publicaciones</Feature>
-        {plan.vipSupport && <Feature>Soporte VIP prioritario</Feature>}
-        <Feature>Backtesting y paper trading</Feature>
+      <ul className="space-y-2 text-sm mb-6 flex-1">
+        {plan.features.map((f) => (
+          <Feature key={f}>{f}</Feature>
+        ))}
       </ul>
+      {plan.equivPerMonth && (
+        <p className="text-xs text-muted-foreground mb-4 -mt-3">
+          Equivalente: ${plan.equivPerMonth}/mes.
+        </p>
+      )}
 
       {isAuthenticated ? (
         <button
