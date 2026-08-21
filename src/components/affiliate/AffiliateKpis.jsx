@@ -1,17 +1,21 @@
 import React from "react";
 import { Wallet, TrendingUp, Repeat, Ticket, ArrowDownToLine } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useAuth } from "@/lib/AuthContext";
 
 function Panel({ children, className = "" }) {
   return <div className={`glass rounded-2xl p-5 ${className}`}>{children}</div>;
 }
 
 export default function AffiliateKpis({ onRequestWithdraw }) {
+  const { user } = useAuth();
+  const balance = Number(user?.wallet_balance || 0);
+
   const kpis = [
     {
       label: "Balance Disponible (USDT)",
-      value: "$1,842.50",
-      sub: "Listo para retiro",
+      value: `$${balance.toFixed(2)}`,
+      sub: balance > 0 ? "Listo para retiro" : "Sin saldo disponible",
       icon: Wallet,
       tone: "primary",
       action: { label: "Solicitar Retiro", icon: ArrowDownToLine, onClick: onRequestWithdraw },

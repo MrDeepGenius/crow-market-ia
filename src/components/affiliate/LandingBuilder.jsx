@@ -1,7 +1,8 @@
 import React, { useState } from "react";
-import { Wand2, Loader2, Check, Link2, BarChart3, Eye } from "lucide-react";
+import { Wand2, Loader2, Check, Link2, BarChart3, Eye, Pencil, Save } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
 import { toast } from "@/components/ui/use-toast";
 import { base44 } from "@/api/base44Client";
 import { useAuth } from "@/lib/AuthContext";
@@ -21,6 +22,7 @@ export default function LandingBuilder() {
   const [generating, setGenerating] = useState(false);
   const [result, setResult] = useState(null);
   const [showFullPage, setShowFullPage] = useState(false);
+  const [editing, setEditing] = useState(false);
 
   // Codigo de seguimiento unico por afiliado (derivado del id de usuario).
   const affiliateCode = user?.id ? user.id.slice(0, 8).toUpperCase() : "AFFILIATE";
@@ -32,6 +34,7 @@ export default function LandingBuilder() {
     }
     setGenerating(true);
     setResult(null);
+    setEditing(false);
     try {
       const product = affiliateProducts.find((p) => p.id === productId);
       const res = await base44.functions.invoke("generateLanding", {
@@ -61,6 +64,13 @@ export default function LandingBuilder() {
     toast({ title: "Link copiado", description: "Tu link de afiliado está en el portapapeles." });
   };
 
+  // Editores manuales
+  const updateField = (field, value) => setResult((r) => ({ ...r, [field]: value }));
+  const updateBenefit = (i, value) =>
+    setResult((r) => ({ ...r, benefits: r.benefits.map((b, idx) => (idx === i ? value : b)) }));
+  const updateStep = (i, field, value) =>
+    setResult((r) => ({ ...r, steps: r.steps.map((s, idx) => (idx === i ? { ...s, [field]: value } : s)) }));
+
   return (
     <Panel>
       <div className="flex items-center gap-3 mb-1">
@@ -69,7 +79,7 @@ export default function LandingBuilder() {
         </div>
         <div>
           <h3 className="font-semibold">Creador de Landings IA (1 clic)</h3>
-          <p className="text-xs text-muted-foreground">Selecciona producto → Clic en Generar → ¡Tu web con tu link de afiliado está lista!</p>
+          <p className="text-xs text-muted-foreground">Genera con IA o edita manualmente. El botón Comprar lleva a tu link de afiliado.</p>
         </div>
       </div>
 
@@ -104,25 +114,38 @@ export default function LandingBuilder() {
           </Button>
 
           {result && (
-            <Dialog open={showFullPage} onOpenChange={setShowFullPage}>
-              <DialogTrigger asChild>
-                <Button variant="outline" className="w-full h-11 bg-transparent">
-                  <Eye className="w-4 h-4 mr-2" /> Ver landing completa (página real)
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="max-w-5xl w-full h-[90vh] p-0 overflow-y-auto gap-0 rounded-2xl">
-                <DialogTitle className="sr-only">Landing page generada</DialogTitle>
-                <LandingPreview
-                  landing={result}
-                  affiliateLink={result.affiliateLink}
-                  product={affiliateProducts.find((p) => p.id === productId)}
-                />
-              </DialogContent>
-            </Dialog>
+            <div className="flex gap-2">
+              <Button variant="outline" className="flex-1 h-11 bg-transparent" onClick={() => setEditing((e) => !e)}>
+                {editing ? (
+                  <>
+                    <Eye className="w-4 h-4 mr-2" /> Ver vista previa
+                  </>
+                ) : (
+                  <>
+                    <Pencil className="w-4 h-4 mr-2" /> Editar manualmente
+                  </>
+                )}
+              </Button>
+              <Dialog open={showFullPage} onOpenChange={setShowFullPage}>
+                <DialogTrigger asChild>
+                  <Button variant="outline" className="flex-1 h-11 bg-transparent">
+                    <Eye className="w-4 h-4 mr-2" /> Ver página completa
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="max-w-5xl w-full h-[90vh] p-0 overflow-y-auto gap-0 rounded-2xl">
+                  <DialogTitle className="sr-only">Landing page generada</DialogTitle>
+                  <LandingPreview
+                    landing={result}
+                    affiliateLink={result.affiliateLink}
+                    product={affiliateProducts.find((p) => p.id === productId)}
+                  />
+                </DialogContent>
+              </Dialog>
+            </div>
           )}
 
           <div className="rounded-xl bg-primary/5 border border-primary/20 p-3 text-xs text-muted-foreground">
-            <span className="text-primary font-semibold">Vinculación automática:</span> todos los botones (Comprar, Alquilar, Probar) incluyen directamente tu link de afiliado.
+            <span className="text-primary font-semibold">Vinculación automática:</span> todos los botones (Comprar, Alquilar, Probar) incluyen directamente tu link de afiliado y llevan a nuestra web.
           </div>
         </div>
 
@@ -139,7 +162,52 @@ export default function LandingBuilder() {
               <p className="text-sm">Tu landing generada aparecerá aquí.</p>
             </div>
           )}
-          {!generating && result && (
+
+          {/* Modo edición manual */}
+          {!generating && result && editing && (
+            <div className="space-y-3">
+              <div className="flex items-center gap-2 text-xs font-semibold text-primary">
+                <Pencil className="w-3.5 h-3.5" /> Edición manual
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs">Título</Label>
+                <Input value={result.title} onChange={(e) => updateField("title", e.target.value)} className="h-10 bg-background/60" />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs">Subtítulo</Label>
+                <Input value={result.subtitle} onChange={(e) => updateField("subtitle", e.target.value)} className="h-10 bg-background/60" />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs">Beneficios</Label>
+                <div className="space-y-1.5">
+                  {result.benefits.map((b, i) => (
+                    <Input key={i} value={b} onChange={(e) => updateBenefit(i, e.target.value)} className="h-9 bg-background/60" placeholder={`Beneficio ${i + 1}`} />
+                  ))}
+                </div>
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs">Pasos (cómo funciona)</Label>
+                <div className="space-y-2">
+                  {result.steps.map((s, i) => (
+                    <div key={i} className="rounded-lg bg-background/40 border border-border p-2 space-y-1.5">
+                      <Input value={s.title} onChange={(e) => updateStep(i, "title", e.target.value)} className="h-9 bg-background/60 text-sm" placeholder={`Paso ${i + 1} - título`} />
+                      <Input value={s.desc} onChange={(e) => updateStep(i, "desc", e.target.value)} className="h-9 bg-background/60 text-xs" placeholder="Descripción" />
+                    </div>
+                  ))}
+                </div>
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs">Texto del botón (CTA)</Label>
+                <Input value={result.cta} onChange={(e) => updateField("cta", e.target.value)} className="h-10 bg-background/60" />
+              </div>
+              <Button className="w-full h-10" onClick={() => setEditing(false)}>
+                <Save className="w-4 h-4 mr-2" /> Guardar y ver vista previa
+              </Button>
+            </div>
+          )}
+
+          {/* Vista previa */}
+          {!generating && result && !editing && (
             <div className="space-y-3">
               <div>
                 <p className="font-heading font-bold text-lg leading-tight">{result.title}</p>
@@ -185,7 +253,14 @@ export default function LandingBuilder() {
                   </Button>
                 </div>
               </div>
-              <Button className="w-full h-10">{result.cta}</Button>
+              <a
+                href={result.affiliateLink}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="w-full h-10 rounded-xl bg-primary text-primary-foreground text-sm font-semibold inline-flex items-center justify-center hover:bg-primary/90 transition"
+              >
+                {result.cta}
+              </a>
             </div>
           )}
         </div>
