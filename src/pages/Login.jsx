@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Mail, Lock, Loader2, ArrowRight } from "lucide-react";
 import AuthLayout from "@/components/AuthLayout";
 import GoogleIcon from "@/components/GoogleIcon";
-import { safeReturnTo } from "@/lib/authReturnTo";
+import { safeReturnTo, postAuthDestination } from "@/lib/authReturnTo";
 
 export default function Login() {
   const [email, setEmail] = useState("");
@@ -22,7 +22,14 @@ export default function Login() {
     setLoading(true);
     try {
       await base44.auth.loginViaEmailPassword(email, password);
-      window.location.href = returnTo;
+      let accountType = "creator";
+      try {
+        const me = await base44.auth.me();
+        accountType = me?.account_type || "creator";
+      } catch {
+        /* fall back to creator */
+      }
+      window.location.href = postAuthDestination(accountType);
     } catch (err) {
       setError(err.message || "Email o contraseña incorrectos");
     } finally {

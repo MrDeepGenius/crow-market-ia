@@ -31,3 +31,16 @@ export function safeReturnTo() {
     return "/";
   }
 }
+
+// Destination after auth based on the user's account type.
+// viewer -> Marketplace, creator/affiliate -> Dashboard (router picks the panel).
+export function destinationForAccountType(accountType) {
+  return accountType === "viewer" ? "/marketplace" : "/dashboard";
+}
+
+// After auth: honor an explicit returnTo if present, otherwise route by role.
+export function postAuthDestination(accountType) {
+  const raw = new URLSearchParams(window.location.search).get("returnTo");
+  if (raw) return safeReturnTo();
+  return destinationForAccountType(accountType);
+}

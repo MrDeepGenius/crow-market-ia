@@ -10,7 +10,7 @@ import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp
 import AuthLayout from "@/components/AuthLayout";
 import GoogleIcon from "@/components/GoogleIcon";
 import { toast } from "@/components/ui/use-toast";
-import { safeReturnTo } from "@/lib/authReturnTo";
+import { safeReturnTo, postAuthDestination } from "@/lib/authReturnTo";
 
 export default function Register() {
   const [firstName, setFirstName] = useState("");
@@ -66,7 +66,7 @@ export default function Register() {
       } catch {
         /* non-blocking */
       }
-      window.location.href = safeReturnTo();
+      window.location.href = postAuthDestination(accountType || "creator");
     } catch (err) {
       setError(err.message || "Código de verificación inválido");
     } finally {
