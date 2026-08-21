@@ -345,6 +345,12 @@ function WalletSection() {
     ? user.plan_tier.charAt(0).toUpperCase() + user.plan_tier.slice(1)
     : "Gratis";
 
+  const expiryDate = user?.plan_expires_at ? new Date(user.plan_expires_at) : null;
+  const daysLeft = expiryDate ? Math.ceil((expiryDate.getTime() - Date.now()) / 86400000) : null;
+  const expiryLabel = expiryDate
+    ? `${expiryDate.toLocaleDateString()}${daysLeft >= 0 ? ` · ${daysLeft}d` : " · vencido"}`
+    : "—";
+
   const handlePurchase = async (plan) => {
     setBuying(plan.id);
     try {
@@ -380,7 +386,7 @@ function WalletSection() {
       <div className="grid sm:grid-cols-3 gap-4">
         <BalanceCard label="Saldo disponible (USDT)" value={`$${balance.toFixed(2)}`} tone="primary" />
         <BalanceCard label="Plan activo" value={planLabel} tone="yellow" />
-        <BalanceCard label="Vencimiento" value={user?.plan_expires_at ? new Date(user.plan_expires_at).toLocaleDateString() : "—"} tone="muted" />
+        <BalanceCard label="Vencimiento" value={expiryLabel} tone="muted" />
       </div>
 
       <Panel>
@@ -419,22 +425,32 @@ function WalletSection() {
           </p>
         ) : (
           <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
-            {CREATOR_PLANS.map((p) => (
-              <div key={p.id} className="rounded-xl border border-border p-4">
-                <p className="font-semibold">{p.name}</p>
-                <p className="text-lg font-bold mt-1">
-                  ${p.priceUsd} <span className="text-xs font-normal text-muted-foreground">/{p.periodLabel}</span>
-                </p>
-                <Button
-                  size="sm"
-                  className="mt-3 w-full"
-                  disabled={buying === p.id || balance < p.priceUsd}
-                  onClick={() => handlePurchase(p)}
-                >
-                  {buying === p.id ? "Procesando..." : "Comprar"}
-                </Button>
-              </div>
-            ))}
+            {CREATOR_PLANS.map((p) => {
+              const projectedEnd = new Date(Date.now() + p.periodDays * 86400000).toLocaleDateString();
+              const isCurrent = user?.plan_tier === p.id;
+              return (
+                <div key={p.id} className={`rounded-xl border p-4 ${isCurrent ? "border-primary bg-primary/5" : "border-border"}`}>
+                  <div className="flex items-center justify-between">
+                    <p className="font-semibold">{p.name}</p>
+                    {isCurrent && <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-primary text-primary-foreground">ACTIVO</span>}
+                  </div>
+                  <p className="text-lg font-bold mt-1">
+                    ${p.priceUsd} <span className="text-xs font-normal text-muted-foreground">/{p.periodLabel}</span>
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Vence el <strong className="text-foreground">{projectedEnd}</strong>
+                  </p>
+                  <Button
+                    size="sm"
+                    className="mt-3 w-full"
+                    disabled={buying === p.id || balance < p.priceUsd}
+                    onClick={() => handlePurchase(p)}
+                  >
+                    {buying === p.id ? "Procesando..." : isCurrent ? "Renovar" : "Comprar"}
+                  </Button>
+                </div>
+              );
+            })}
           </div>
         )}
       </Panel>
