@@ -7,6 +7,7 @@ import InfoCard from "@/components/marketplace/InfoCard";
 import ProductModal from "@/components/marketplace/ProductModal";
 import FilterBar from "@/components/marketplace/FilterBar";
 import PublicNavbar from "@/components/PublicNavbar";
+import { useAuth } from "@/lib/AuthContext";
 
 export default function Marketplace() {
   const [cat, setCat] = useState("Todos");
@@ -15,6 +16,7 @@ export default function Marketplace() {
   const [payType, setPayType] = useState("all");
   const [maxPrice, setMaxPrice] = useState(500);
   const [selected, setSelected] = useState(null);
+  const { isAuthenticated } = useAuth();
 
   const suggestions = useMemo(() => {
     if (!q) return [];
@@ -59,7 +61,7 @@ export default function Marketplace() {
 
   return (
     <div className="min-h-screen bg-background">
-      <PublicNavbar />
+      {!isAuthenticated && <PublicNavbar />}
       <div className="fixed inset-0 -z-10 grid-bg opacity-20" />
       <div className="fixed -top-1/4 left-1/3 -z-10 w-[50rem] h-[50rem] rounded-full bg-[radial-gradient(circle,hsl(276_91%_55%_/_0.14),transparent_60%)] blur-3xl" />
       <div className="fixed top-1/3 -right-1/4 -z-10 w-[40rem] h-[40rem] rounded-full bg-[radial-gradient(circle,hsl(190_90%_50%_/_0.10),transparent_60%)] blur-3xl" />
