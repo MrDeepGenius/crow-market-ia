@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/lib/AuthContext";
-import { LogOut, Menu, X, Bell, Search } from "lucide-react";
+import { LogOut, Menu, X, Bell, Search, Home } from "lucide-react";
 import ThemeToggle from "@/components/ThemeToggle";
 import BrandLogo from "@/components/BrandLogo";
 
@@ -23,7 +23,7 @@ export default function DashboardShell({ title, navItems, active, onSelect, chil
 
       {/* Sidebar */}
       <aside
-        className={`fixed top-0 left-0 z-40 h-screen w-64 border-r border-sidebar-border bg-sidebar-background transition-transform lg:translate-x-0 ${
+        className={`fixed top-0 left-0 z-40 h-screen w-64 border-r border-sidebar-border bg-sidebar shadow-[4px_0_24px_-12px_rgba(0,0,0,0.4)] transition-transform lg:translate-x-0 ${
           mobileOpen ? "translate-x-0" : "-translate-x-full"
         }`}
       >
@@ -58,7 +58,13 @@ export default function DashboardShell({ title, navItems, active, onSelect, chil
           })}
         </nav>
 
-        <div className="absolute bottom-0 inset-x-0 p-3 border-t border-sidebar-border">
+        <div className="absolute bottom-0 inset-x-0 p-3 border-t border-sidebar-border space-y-1">
+          <button
+            onClick={() => navigate("/")}
+            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors"
+          >
+            <Home className="w-4 h-4" /> Ir al inicio
+          </button>
           <button
             onClick={handleLogout}
             className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
