@@ -29,6 +29,28 @@
       "type": "number",
       "description": "Mensajes de IA disponibles. 1 credito = 1 mensaje. 30 gratis al registrarse.",
       "default": 0
+    },
+    "plan_tier": {
+      "type": "string",
+      "description": "Plan de creador activo. free = sin licencia (no puede crear).",
+      "enum": [
+        "free",
+        "bronce",
+        "plata",
+        "oro",
+        "diamante"
+      ],
+      "default": "free"
+    },
+    "plan_expires_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Fecha de vencimiento del plan de creador"
+    },
+    "auto_renew": {
+      "type": "boolean",
+      "description": "Renovacion automatica del plan al vencer",
+      "default": false
     }
   },
   "required": [

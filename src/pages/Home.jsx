@@ -9,6 +9,7 @@ import HeroVisual from "@/components/home/HeroVisual";
 import { SAMPLE_PRODUCTS } from "@/data/products";
 import { Image } from "@/components/ui/image";
 import BrandLogo from "@/components/BrandLogo";
+import PricingSection from "@/components/home/PricingSection";
 
 const fadeUp = {
   hidden: { opacity: 0, y: 24 },
@@ -153,6 +154,9 @@ export default function Home() {
           </div>
         </div>
       </section>
+
+      {/* PRICING */}
+      <PricingSection />
 
       {/* CTA */}
       <section className="py-20">

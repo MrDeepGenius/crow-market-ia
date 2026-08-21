@@ -7,6 +7,8 @@ import {
 import DashboardShell from "@/components/dashboard/DashboardShell";
 import CreateBot from "@/components/creator/CreateBot";
 import AIChat from "@/components/creator/AIChat";
+import PlanGate from "@/components/creator/PlanGate";
+import RenewalBanner from "@/components/creator/RenewalBanner";
 import { AreaChart, Area, ResponsiveContainer, Tooltip, XAxis } from "recharts";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -41,6 +43,7 @@ export default function CreatorDashboard() {
   const [active, setActive] = useState("home");
   return (
     <DashboardShell title="Creator Dashboard" navItems={navItems} active={active} onSelect={setActive}>
+      <RenewalBanner />
       <SectionRenderer active={active} onSaved={(s) => setActive(s)} />
     </DashboardShell>
   );
@@ -53,13 +56,13 @@ function SectionRenderer({ active, onSaved }) {
     case "products":
       return <ProductsSection />;
     case "create-product":
-      return <CreateProductSection />;
+      return <PlanGate title="Licencia requerida para crear productos"><CreateProductSection /></PlanGate>;
     case "studio":
       return <StudioSection />;
     case "bots":
       return <BotsSection />;
     case "create-bot":
-      return <CreateBot onSaved={() => onSaved("bots")} />;
+      return <PlanGate title="Licencia requerida para crear bots"><CreateBot onSaved={() => onSaved("bots")} /></PlanGate>;
     case "backtest":
       return <BacktestSection />;
     case "paper":
