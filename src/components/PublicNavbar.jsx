@@ -7,8 +7,8 @@ export default function PublicNavbar() {
   return (
     <header className="fixed top-0 inset-x-0 z-50">
       <div className="mx-auto max-w-7xl px-4 sm:px-6">
-        <div className="mt-4 flex items-center justify-between rounded-2xl glass px-4 sm:px-6 h-14">
-          <BrandLogo size="md" to="/" wordClass="hidden sm:inline" />
+        <div className="mt-4 flex items-center justify-between rounded-2xl glass px-4 sm:px-6 h-16">
+          <BrandLogo size="lg" to="/" wordClass="hidden sm:inline" />
 
           <nav className="hidden md:flex items-center gap-8 text-sm text-muted-foreground">
             <a href="#features" className="hover:text-foreground transition-colors">Plataforma</a>
