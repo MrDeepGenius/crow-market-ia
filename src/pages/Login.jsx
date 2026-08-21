@@ -4,7 +4,7 @@ import { base44 } from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { LogIn, Mail, Lock, Loader2 } from "lucide-react";
+import { Mail, Lock, Loader2, ArrowRight } from "lucide-react";
 import AuthLayout from "@/components/AuthLayout";
 import GoogleIcon from "@/components/GoogleIcon";
 import { safeReturnTo } from "@/lib/authReturnTo";
@@ -14,8 +14,6 @@ export default function Login() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-  // Post-login destination (e.g. the MCP OAuth consent page sends users here
-  // with returnTo so the grant flow can resume). Same-origin paths only.
   const returnTo = safeReturnTo();
 
   const handleSubmit = async (e) => {
@@ -26,53 +24,34 @@ export default function Login() {
       await base44.auth.loginViaEmailPassword(email, password);
       window.location.href = returnTo;
     } catch (err) {
-      setError(err.message || "Invalid email or password");
+      setError(err.message || "Email o contraseña incorrectos");
     } finally {
       setLoading(false);
     }
   };
 
-  const handleGoogle = () => {
-    base44.auth.loginWithProvider("google", returnTo);
-  };
+  const handleGoogle = () => base44.auth.loginWithProvider("google", returnTo);
 
   return (
     <AuthLayout
-      icon={LogIn}
-      title="Welcome back"
-      subtitle="Log in to your account"
-      footer={
-        <>
-          Don't have an account?{" "}
-          <Link
-            to={"/register" + (returnTo !== "/" ? "?returnTo=" + encodeURIComponent(returnTo) : "")}
-            className="text-primary font-medium hover:underline"
-          >
-            Create one
-          </Link>
-        </>
-      }
+      variant="robot"
+      title="Bienvenido de nuevo."
+      subtitle="Tu próxima creación empieza aquí. Inicia sesión para acceder a tu espacio de creador, afiliado y a todas tus herramientas."
+      robotCaption="Tu copiloto de IA está listo para acompañarte."
     >
       <Button
         variant="outline"
-        className="w-full h-12 text-sm font-medium mb-6"
+        className="w-full h-12 text-sm font-medium mb-5 bg-transparent border-border hover:bg-secondary"
         onClick={handleGoogle}
       >
-        <GoogleIcon className="w-5 h-5 mr-2" />
-        Continue with Google
+        <GoogleIcon className="w-5 h-5 mr-2.5" />
+        Continuar con Google
       </Button>
 
-      <div className="relative mb-6">
-        <div className="absolute inset-0 flex items-center">
-          <div className="w-full border-t border-border" />
-        </div>
-        <div className="relative flex justify-center text-xs uppercase">
-          <span className="bg-card px-3 text-muted-foreground">or</span>
-        </div>
-      </div>
+      <Divider />
 
       {error && (
-        <div className="mb-4 p-3 rounded-lg bg-destructive/10 text-destructive text-sm">
+        <div className="mb-4 p-3 rounded-xl bg-destructive/10 border border-destructive/20 text-destructive text-sm">
           {error}
         </div>
       )}
@@ -81,29 +60,29 @@ export default function Login() {
         <div className="space-y-2">
           <Label htmlFor="email">Email</Label>
           <div className="relative">
-            <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" aria-hidden="true" />
+            <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <Input
               id="email"
               type="email"
               autoComplete="email"
               autoFocus
-              placeholder="you@example.com"
+              placeholder="tu@email.com"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="pl-10 h-12"
+              className="pl-11 h-12 bg-secondary/50 border-border"
               required
             />
           </div>
         </div>
         <div className="space-y-2">
           <div className="flex items-center justify-between">
-            <Label htmlFor="password">Password</Label>
+            <Label htmlFor="password">Contraseña</Label>
             <Link to="/forgot-password" className="text-xs text-primary hover:underline">
-              Forgot password?
+              ¿Olvidaste tu contraseña?
             </Link>
           </div>
           <div className="relative">
-            <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" aria-hidden="true" />
+            <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <Input
               id="password"
               type="password"
@@ -111,22 +90,48 @@ export default function Login() {
               placeholder="••••••••"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="pl-10 h-12"
+              className="pl-11 h-12 bg-secondary/50 border-border"
               required
             />
           </div>
         </div>
-        <Button type="submit" className="w-full h-12 font-medium" disabled={loading}>
+        <Button type="submit" className="w-full h-12 font-semibold text-base group" disabled={loading}>
           {loading ? (
             <>
               <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-              Logging in...
+              Iniciando sesión...
             </>
           ) : (
-            "Log in"
+            <>
+              Iniciar sesión
+              <ArrowRight className="w-4 h-4 ml-2 transition-transform group-hover:translate-x-1" />
+            </>
           )}
         </Button>
       </form>
+
+      <p className="text-sm text-muted-foreground mt-8">
+        ¿Todavía no tienes una cuenta?{" "}
+        <Link
+          to={"/register" + (returnTo !== "/" ? "?returnTo=" + encodeURIComponent(returnTo) : "")}
+          className="text-primary font-semibold hover:underline"
+        >
+          Crear cuenta
+        </Link>
+      </p>
     </AuthLayout>
+  );
+}
+
+function Divider() {
+  return (
+    <div className="relative mb-5">
+      <div className="absolute inset-0 flex items-center">
+        <div className="w-full border-t border-border" />
+      </div>
+      <div className="relative flex justify-center text-xs uppercase tracking-widest">
+        <span className="bg-card px-3 text-muted-foreground">o</span>
+      </div>
+    </div>
   );
 }
