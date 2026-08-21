@@ -3,6 +3,7 @@ import { Navigate } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
 import { useAuth } from "@/lib/AuthContext";
 import CreatorDashboard from "@/pages/CreatorDashboard";
+import AffiliateDashboard from "@/pages/AffiliateDashboard";
 
 // Routes an authenticated user to their role panel.
 // Also persists a role chosen during Google register (?account_type=...),
@@ -26,6 +27,9 @@ export default function DashboardRouter() {
 
   if (effectiveType === "viewer") {
     return <Navigate to="/marketplace" replace />;
+  }
+  if (effectiveType === "affiliate") {
+    return <AffiliateDashboard />;
   }
   return <CreatorDashboard />;
 }
