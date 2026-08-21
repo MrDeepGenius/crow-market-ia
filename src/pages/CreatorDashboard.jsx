@@ -5,6 +5,7 @@ import {
   Users, TrendingUp, Wallet, ArrowDownToLine, BarChart3, Settings, Plus, DollarSign, Activity,
 } from "lucide-react";
 import DashboardShell from "@/components/dashboard/DashboardShell";
+import CreateBot from "@/components/creator/CreateBot";
 import { AreaChart, Area, ResponsiveContainer, Tooltip, XAxis } from "recharts";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -38,12 +39,12 @@ export default function CreatorDashboard() {
   const [active, setActive] = useState("home");
   return (
     <DashboardShell title="Creator Dashboard" navItems={navItems} active={active} onSelect={setActive}>
-      <SectionRenderer active={active} />
+      <SectionRenderer active={active} onSaved={(s) => setActive(s)} />
     </DashboardShell>
   );
 }
 
-function SectionRenderer({ active }) {
+function SectionRenderer({ active, onSaved }) {
   switch (active) {
     case "home":
       return <HomeSection />;
@@ -56,7 +57,7 @@ function SectionRenderer({ active }) {
     case "bots":
       return <BotsSection />;
     case "create-bot":
-      return <CreateBotSection />;
+      return <CreateBot onSaved={() => onSaved("bots")} />;
     case "backtest":
       return <BacktestSection />;
     case "paper":
@@ -243,38 +244,6 @@ function BotsSection() {
           </Panel>
         ))}
       </div>
-    </div>
-  );
-}
-
-function CreateBotSection() {
-  return (
-    <div className="space-y-4">
-      <SectionHeader title="Crear bot" />
-      <Panel>
-        <div className="grid sm:grid-cols-2 gap-4">
-          <FormField label="Nombre del bot" placeholder="Ej. Apex BTC Pro" />
-          <FormField label="Timeframe" placeholder="1m / 5m / 15m / 1H / 4H / 1D" />
-          <FormField label="Stop Loss (%)" placeholder="2" type="number" />
-          <FormField label="Take Profit (%)" placeholder="4" type="number" />
-          <FormField label="Trailing Stop (%)" placeholder="1.5" type="number" />
-          <FormField label="Máx. pérdida diaria (%)" placeholder="5" type="number" />
-          <FormField label="Máx. drawdown (%)" placeholder="15" type="number" />
-          <FormField label="Núm. máx. operaciones" placeholder="10" type="number" />
-        </div>
-        <div className="mt-4">
-          <Label className="mb-2 block">Estrategia e indicadores</Label>
-          <textarea
-            placeholder="Describe la estrategia, indicadores y reglas de entrada/salida..."
-            rows={4}
-            className="w-full rounded-xl bg-secondary/50 border border-border p-3 text-sm outline-none focus:border-primary resize-none"
-          />
-        </div>
-        <div className="mt-5 flex gap-3">
-          <Button className="h-11 px-6">Guardar bot</Button>
-          <Button variant="outline" className="h-11 px-6 bg-transparent border-border hover:bg-secondary">Ejecutar backtest</Button>
-        </div>
-      </Panel>
     </div>
   );
 }
