@@ -76,6 +76,12 @@ export default function Register() {
       } catch {
         /* non-blocking */
       }
+      try {
+        const fullName = [firstName, lastName].filter(Boolean).join(" ") || email;
+        await base44.functions.invoke("sendWelcomeEmail", { email, name: fullName });
+      } catch {
+        /* non-blocking */
+      }
       window.location.href = postAuthDestination(accountType || "creator");
     } catch (err) {
       setError(err.message || "Código de verificación inválido");

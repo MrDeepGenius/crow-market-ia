@@ -1,8 +1,9 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import {
   LayoutDashboard, Package, PlusCircle, Cpu, Bot, History, FlaskConical, Store,
   Users, TrendingUp, Wallet, ArrowDownToLine, BarChart3, Settings, Plus, DollarSign, Activity, Sparkles,
+  CheckCircle, Loader2,
 } from "lucide-react";
 import DashboardShell from "@/components/dashboard/DashboardShell";
 import CreateBot from "@/components/creator/CreateBot";
@@ -10,6 +11,7 @@ import AIChat from "@/components/creator/AIChat";
 import PlanGate from "@/components/creator/PlanGate";
 import RenewalBanner from "@/components/creator/RenewalBanner";
 import { useAuth } from "@/lib/AuthContext";
+import { base44 } from "@/api/base44Client";
 import { purchasePlan, creditWallet } from "@/lib/purchase";
 import { CREATOR_PLANS, USDT_DEPOSIT } from "@/lib/plans";
 import { toast } from "@/components/ui/use-toast";
@@ -34,6 +36,7 @@ const navItems = [
   { id: "commissions", label: "Comisiones", icon: DollarSign },
   { id: "wallet", label: "Wallet", icon: Wallet },
   { id: "withdrawals", label: "Retiros", icon: ArrowDownToLine },
+  { id: "withdrawals-admin", label: "Gestión de retiros", icon: CheckCircle },
   { id: "stats", label: "Estadísticas", icon: BarChart3 },
   { id: "settings", label: "Configuración", icon: Settings },
 ];
@@ -45,8 +48,10 @@ const chartData = [
 
 export default function CreatorDashboard() {
   const [active, setActive] = useState("home");
+  const { user } = useAuth();
+  const items = navItems.filter((n) => n.id !== "withdrawals-admin" || user?.role === "admin");
   return (
-    <DashboardShell title="Creator Dashboard" navItems={navItems} active={active} onSelect={setActive}>
+    <DashboardShell title="Creator Dashboard" navItems={items} active={active} onSelect={setActive}>
       <RenewalBanner />
       <SectionRenderer active={active} onSaved={(s) => setActive(s)} />
     </DashboardShell>
@@ -75,6 +80,8 @@ function SectionRenderer({ active, onSaved }) {
       return <WalletSection />;
     case "withdrawals":
       return <WithdrawalsSection />;
+    case "withdrawals-admin":
+      return <WithdrawalsAdminSection />;
     case "affiliates":
       return <AffiliatesSection />;
     case "sales":
@@ -477,6 +484,82 @@ function WithdrawalsSection() {
             </div>
           ))}
         </div>
+      </Panel>
+    </div>
+  );
+}
+
+function WithdrawalsAdminSection() {
+  const { user } = useAuth();
+  const [list, setList] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [approving, setApproving] = useState(null);
+
+  const load = async () => {
+    setLoading(true);
+    try {
+      const res = await base44.entities.Withdrawal.filter({ status: "pending" }, "-created_date", 50);
+      setList(res || []);
+    } catch (err) {
+      toast({ variant: "destructive", title: "Error al cargar retiros", description: err?.message });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (user?.role === "admin") load();
+  }, [user]);
+
+  const approve = async (id) => {
+    setApproving(id);
+    try {
+      await base44.functions.invoke("approveWithdrawal", { withdrawalId: id });
+      toast({ title: "Retiro aprobado", description: "Se marcó como completado y se envió el email al afiliado." });
+      load();
+    } catch (err) {
+      toast({ variant: "destructive", title: "No se pudo aprobar", description: err?.message || "Intenta de nuevo." });
+    } finally {
+      setApproving(null);
+    }
+  };
+
+  if (user?.role !== "admin") {
+    return <Placeholder title="Gestión de retiros" desc="Solo disponible para administradores." icon={CheckCircle} />;
+  }
+
+  return (
+    <div className="space-y-4">
+      <SectionHeader title="Gestión de retiros" />
+      <Panel>
+        <PanelHeader title="Solicitudes pendientes" />
+        {loading ? (
+          <div className="flex items-center justify-center py-10">
+            <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+          </div>
+        ) : list.length === 0 ? (
+          <p className="text-sm text-muted-foreground py-6 text-center">No hay retiros pendientes.</p>
+        ) : (
+          <div className="space-y-2">
+            {list.map((w) => (
+              <div key={w.id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 py-3 border-b border-border last:border-0">
+                <div className="space-y-1">
+                  <p className="text-sm font-semibold">{Number(w.amount).toFixed(2)} USDT · <span className="text-muted-foreground font-normal">{w.network}</span></p>
+                  <p className="text-xs text-muted-foreground font-mono break-all">{w.wallet_address}</p>
+                </div>
+                <Button
+                  size="sm"
+                  className="h-9"
+                  disabled={approving === w.id}
+                  onClick={() => approve(w.id)}
+                >
+                  {approving === w.id ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : <CheckCircle className="w-4 h-4 mr-1" />}
+                  Aprobar
+                </Button>
+              </div>
+            ))}
+          </div>
+        )}
       </Panel>
     </div>
   );
