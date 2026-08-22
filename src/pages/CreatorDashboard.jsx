@@ -16,6 +16,7 @@ import { base44 } from "@/api/base44Client";
 import { purchasePlan, creditWallet } from "@/lib/purchase";
 import { CREATOR_PLANS, USDT_DEPOSIT } from "@/lib/plans";
 import { MARKET_CATEGORIES, DEFAULT_PRODUCT_IMAGE } from "@/data/products";
+import MarketplaceBrowser from "@/components/marketplace/MarketplaceBrowser";
 import { toast } from "@/components/ui/use-toast";
 import { AreaChart, Area, ResponsiveContainer, Tooltip, XAxis } from "recharts";
 import { Button } from "@/components/ui/button";
@@ -95,7 +96,7 @@ function SectionRenderer({ active, onSaved }) {
     case "ai-chat":
       return <AIChat />;
     case "marketplace":
-      return <Placeholder title="Marketplace" desc="Explora el marketplace completo desde la navegación pública." />;
+      return <MarketplaceBrowser />;
     case "settings":
       return <Placeholder title="Configuración" desc="Gestiona tu cuenta, seguridad y preferencias." />;
     default:
