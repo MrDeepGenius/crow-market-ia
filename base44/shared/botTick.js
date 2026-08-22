@@ -92,12 +92,21 @@ export async function executeTick({ base44, instance }) {
 
     // --- 4. Evaluar estrategia ---
     const signal = evaluateSignal({ candles, config, currentPosition: instance.position || null });
-    await log("signal", `Senal: ${signal.action} - ${signal.reason}`, {
+    // Log legible: Bot + indicador + valor + condicion + resultado (formato solicitado).
+    const strat = signal.strategy || {};
+    const condDetails = strat.conditions
+      ? Object.values(strat.conditions).flatMap((c) => c.details || [])
+      : [];
+    const stratLine = condDetails.length ? ` | Estrategia: ${condDetails.join(" Y ")}` : "";
+    await log("signal", `Bot: ${instance.bot_name || "—"} | Senal: ${signal.action} - ${signal.reason}${stratLine}`, {
+      bot_name: instance.bot_name || null,
       action: signal.action, reason: signal.reason,
+      strategy_type: strat.type || null,
+      conditions: strat.conditions || null,
       sl: signal.sl, tp: signal.tp, riskPct: signal.riskPct,
       ...signal.indicators,
     });
-    result.signal = { action: signal.action, reason: signal.reason };
+    result.signal = { action: signal.action, reason: signal.reason, strategy: strat };
 
     const update = { last_tick: new Date().toISOString() };
 
