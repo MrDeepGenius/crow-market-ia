@@ -161,7 +161,7 @@ export async function executeTick({ base44, instance }) {
               executed_price: Math.round(entryPrice * 100) / 100, executed_at: new Date().toISOString(),
             });
             update.position = {
-              side: side.toLowerCase(), entryPrice: Math.round(entryPrice * 100) / 100, qty,
+              side: side === "BUY" ? "long" : "short", entryPrice: Math.round(entryPrice * 100) / 100, qty,
               sl: signal.sl, tp: signal.tp, orderId: String(res.exchange_order_id),
               clientOrderId, entryTime: new Date().toISOString(),
             };
