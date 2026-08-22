@@ -1,0 +1,77 @@
+{
+  "name": "BotInstance",
+  "type": "object",
+  "properties": {
+    "bot_id": {
+      "type": "string",
+      "description": "ID del Product (bot) comprado"
+    },
+    "bot_name": {
+      "type": "string",
+      "description": "Nombre del bot (snapshot)"
+    },
+    "user_id": {
+      "type": "string",
+      "description": "ID del usuario comprador dueno de la instancia"
+    },
+    "connection_id": {
+      "type": "string",
+      "description": "ID de la BinanceConnection usada para ejecutar ordenes"
+    },
+    "capital": {
+      "type": "number",
+      "description": "Capital asignado a la instancia (USDT)"
+    },
+    "config": {
+      "type": "object",
+      "description": "Snapshot de la configuracion del bot al crear la instancia"
+    },
+    "symbol": {
+      "type": "string",
+      "description": "Par de trading, ej. BTC/USDT"
+    },
+    "timeframe": {
+      "type": "string",
+      "description": "Timeframe de ejecucion, ej. 15m"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "idle",
+        "running",
+        "paused",
+        "stopped"
+      ],
+      "default": "idle",
+      "description": "Estado de ejecucion de la instancia"
+    },
+    "position": {
+      "type": "object",
+      "description": "Posicion abierta: side, entryPrice, qty, sl, tp, orderId, entryTime"
+    },
+    "started_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Fecha de inicio de ejecucion"
+    },
+    "stopped_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Fecha de detencion"
+    },
+    "last_tick": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Ultima evaluacion del motor"
+    },
+    "stats": {
+      "type": "object",
+      "description": "Estadisticas: trades, wins, losses, pnl"
+    }
+  },
+  "required": [
+    "bot_id",
+    "user_id",
+    "status"
+  ]
+}

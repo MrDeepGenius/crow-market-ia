@@ -1,0 +1,39 @@
+{
+  "name": "BotLog",
+  "type": "object",
+  "properties": {
+    "instance_id": {
+      "type": "string",
+      "description": "ID de la BotInstance"
+    },
+    "user_id": {
+      "type": "string",
+      "description": "ID del usuario dueno"
+    },
+    "level": {
+      "type": "string",
+      "enum": [
+        "info",
+        "signal",
+        "order",
+        "warn",
+        "error"
+      ],
+      "default": "info",
+      "description": "Nivel del evento"
+    },
+    "message": {
+      "type": "string",
+      "description": "Descripcion del evento"
+    },
+    "data": {
+      "type": "object",
+      "description": "Datos adicionales del evento (precio, indicadores, orden, etc.)"
+    }
+  },
+  "required": [
+    "instance_id",
+    "level",
+    "message"
+  ]
+}

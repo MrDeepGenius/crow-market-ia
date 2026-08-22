@@ -1,0 +1,52 @@
+{
+  "name": "BinanceConnection",
+  "type": "object",
+  "properties": {
+    "user_id": {
+      "type": "string",
+      "description": "ID del usuario dueno de la conexion"
+    },
+    "label": {
+      "type": "string",
+      "description": "Etiqueta opcional para identificar la conexion"
+    },
+    "api_key": {
+      "type": "string",
+      "description": "API Key de Binance Testnet (server-side only)"
+    },
+    "api_secret": {
+      "type": "string",
+      "description": "API Secret de Binance Testnet (server-side only)"
+    },
+    "testnet": {
+      "type": "boolean",
+      "default": true,
+      "description": "Indica si la conexion es a Binance Testnet"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "connected",
+        "error",
+        "revoked"
+      ],
+      "default": "connected",
+      "description": "Estado de la conexion"
+    },
+    "last_check": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Ultima verificacion de credenciales"
+    },
+    "last_error": {
+      "type": "string",
+      "description": "Ultimo mensaje de error de conexion"
+    }
+  },
+  "required": [
+    "user_id",
+    "api_key",
+    "api_secret",
+    "status"
+  ]
+}

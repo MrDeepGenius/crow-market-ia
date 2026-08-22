@@ -26,7 +26,7 @@ export default function DashboardRouter() {
   const effectiveType = pendingType || user?.account_type;
 
   if (effectiveType === "viewer") {
-    return <Navigate to="/marketplace" replace />;
+    return <Navigate to="/my-bots" replace />;
   }
   if (effectiveType === "affiliate") {
     return <AffiliateDashboard />;
