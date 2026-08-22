@@ -106,6 +106,14 @@
       "type": "object",
       "description": "Configuracion tecnica del bot (generada por IA o manual)"
     },
+    "current_version": {
+      "type": "string",
+      "description": "Etiqueta de la version actual del bot (ej. v1.0)"
+    },
+    "landing": {
+      "type": "object",
+      "description": "Contenido de landing page generado por IA"
+    },
     "status": {
       "type": "string",
       "enum": [

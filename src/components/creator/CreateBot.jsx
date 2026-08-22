@@ -12,6 +12,29 @@ import { DEFAULT_PRODUCT_IMAGE } from "@/data/products";
 const BOT_CATEGORY = "Bots de Trading IA";
 const RISK_OPTIONS = ["Bajo", "Medio", "Alto"];
 
+// Crea un Product (bot) en estado borrador + su primera BotVersion (v1.0, draft)
+// con el checklist de validacion inicial. El bot se publica desde el workflow de testing.
+async function createBotWithVersion(record, config) {
+  const product = await base44.entities.Product.create({ ...record, status: "draft", current_version: "v1.0" });
+  const checklist = {
+    strategy_validated: true,
+    risk_configured: true,
+    pricing_configured: Number(record.rentPrice) > 0,
+    backtest_run: false,
+    paper_test_run: false,
+    security_check: false,
+  };
+  await base44.entities.BotVersion.create({
+    product_id: product.id,
+    version_label: "v1.0",
+    status: "draft",
+    config: config || record.config || null,
+    changelog: "Versión inicial",
+    checklist,
+  });
+  return product;
+}
+
 // Create Bot flow: choose IA vs Manual, then generate or configure, then publish to marketplace.
 export default function CreateBot({ onSaved }) {
   const [mode, setMode] = useState("choose"); // "choose" | "ia" | "manual"
@@ -107,10 +130,11 @@ function PublishPanel({ bot, config, onPublished, defaultName }) {
         includes: bot?.includes || ["Estrategia preconfigurada", "Gestión de riesgo", "Panel de monitoreo"],
         requirements: bot?.requirements || ["Exchange con API de trading"],
         config: bot || config || null,
-        status: "published",
+        status: "draft",
+        current_version: "v1.0",
       };
-      await base44.entities.Product.create(record);
-      toast({ title: "Bot publicado", description: "Ya está visible en el marketplace tal cual lo configuraste." });
+      await createBotWithVersion(record, bot || config || null);
+      toast({ title: "Bot creado", description: "Se guardó como borrador. Completá el testing y validá antes de publicar." });
       onPublished?.();
     } catch (err) {
       toast({ variant: "destructive", title: "No se pudo publicar", description: err?.message || "Intenta nuevamente." });
@@ -125,7 +149,7 @@ function PublishPanel({ bot, config, onPublished, defaultName }) {
         <div className="w-8 h-8 rounded-lg bg-primary/15 flex items-center justify-center">
           <CheckCircle2 className="w-4 h-4 text-primary" />
         </div>
-        <h3 className="font-semibold">Publicar en el marketplace</h3>
+        <h3 className="font-semibold">Guardar bot (borrador)</h3>
       </div>
       <div className="grid sm:grid-cols-2 gap-4">
         <div className="space-y-2">
@@ -158,7 +182,7 @@ function PublishPanel({ bot, config, onPublished, defaultName }) {
       </div>
       <Button onClick={publish} disabled={saving} className="mt-5 h-11 px-6">
         {saving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
-        {saving ? "Publicando..." : "Publicar bot"}
+        {saving ? "Guardando..." : "Guardar bot"}
       </Button>
     </div>
   );
@@ -288,7 +312,7 @@ function IABotBuilder({ onSaved }) {
             <div className="mt-4 flex items-start gap-2 p-3 rounded-xl bg-yellow-400/5 border border-yellow-400/15">
               <AlertTriangle className="w-4 h-4 text-yellow-400 mt-0.5 shrink-0" />
               <p className="text-xs text-muted-foreground">
-                La IA no publica ni activa el bot automáticamente. Configura el precio y publica para que aparezca en el marketplace.
+                La IA no publica ni activa el bot automáticamente. Guardá el bot como borrador y publicalo desde "Mis bots" tras completar el testing.
               </p>
             </div>
           </div>
@@ -347,10 +371,11 @@ function ManualBotBuilder({ onSaved }) {
         includes: ["Estrategia preconfigurada", "Gestión de riesgo", "Panel de monitoreo"],
         requirements: [form.exchange ? `Exchange ${form.exchange}` : "Exchange con API de trading"],
         config,
-        status: "published",
+        status: "draft",
+        current_version: "v1.0",
       };
-      await base44.entities.Product.create(record);
-      toast({ title: "Bot publicado", description: "Ya está visible en el marketplace." });
+      await createBotWithVersion(record, config);
+      toast({ title: "Bot creado", description: "Se guardó como borrador. Completá el testing y validá antes de publicar." });
       onSaved?.("bots");
     } catch (err) {
       toast({ variant: "destructive", title: "No se pudo publicar", description: err?.message || "Intenta nuevamente." });
@@ -404,7 +429,7 @@ function ManualBotBuilder({ onSaved }) {
       <div className="flex gap-3">
         <Button onClick={publish} disabled={saving} className="h-11 px-6">
           {saving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
-          {saving ? "Publicando..." : "Publicar bot"}
+          {saving ? "Guardando..." : "Guardar bot"}
         </Button>
         <Button variant="outline" className="h-11 px-6 bg-transparent border-border hover:bg-secondary">Ejecutar backtest</Button>
       </div>

@@ -7,6 +7,7 @@ import {
 } from "lucide-react";
 import DashboardShell from "@/components/dashboard/DashboardShell";
 import CreateBot from "@/components/creator/CreateBot";
+import BotWorkflow from "@/components/creator/BotWorkflow";
 import AIChat from "@/components/creator/AIChat";
 import PlanGate from "@/components/creator/PlanGate";
 import RenewalBanner from "@/components/creator/RenewalBanner";
@@ -352,33 +353,56 @@ function StudioSection() {
 }
 
 function BotsSection() {
-  const bots = [
-    { n: "Apex BTC Pro", t: "1H", s: "LIVE", ops: 128 },
-    { n: "Grid Master", t: "15m", s: "LIVE", ops: 64 },
-    { n: "Neural Scalper", t: "5m", s: "PAUSA", ops: 22 },
-  ];
+  const { user } = useAuth();
+  const [items, setItems] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [selected, setSelected] = useState(null);
+
+  const load = async () => {
+    setLoading(true);
+    try {
+      const rows = await base44.entities.Product.filter({ type: "bot", created_by_id: user.id }, "-created_date", 50);
+      setItems(rows || []);
+    } catch (e) {} finally { setLoading(false); }
+  };
+  useEffect(() => { if (user?.id) load(); }, [user?.id]);
+
+  if (selected) {
+    return <BotWorkflow product={selected} onBack={() => { setSelected(null); load(); }} onChanged={load} />;
+  }
+
   return (
     <div className="space-y-4">
       <SectionHeader title="Mis bots" action="Crear bot" />
-      <div className="grid gap-3">
-        {bots.map((b) => (
-          <Panel key={b.n} className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <div className="w-11 h-11 rounded-xl bg-primary/15 flex items-center justify-center">
-                <Bot className="w-5 h-5 text-primary" />
-              </div>
-              <div>
-                <p className="font-semibold">{b.n}</p>
-                <p className="text-xs text-muted-foreground">TF {b.t} · {b.ops} operaciones</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-2">
-              <Button size="sm" variant="outline" className="bg-transparent border-border hover:bg-secondary">Pausar</Button>
-              <span className={`text-[11px] font-semibold px-2.5 py-1 rounded-full ${b.s === "LIVE" ? "bg-green-400/15 text-green-400" : "bg-yellow-400/15 text-yellow-400"}`}>● {b.s}</span>
-            </div>
-          </Panel>
-        ))}
-      </div>
+      {loading ? (
+        <div className="flex items-center justify-center py-10"><Loader2 className="w-5 h-5 animate-spin text-muted-foreground" /></div>
+      ) : items.length === 0 ? (
+        <Panel className="text-center py-10">
+          <Bot className="w-8 h-8 mx-auto text-muted-foreground mb-3" />
+          <p className="text-sm text-muted-foreground">Aún no creaste bots. Creá uno y aparecerá acá para hacer el testing y publicarlo.</p>
+        </Panel>
+      ) : (
+        <div className="grid gap-3">
+          {items.map((b) => (
+            <button key={b.id} type="button" onClick={() => setSelected(b)} className="w-full text-left">
+              <Panel className="flex items-center justify-between hover:border-primary/40 transition">
+                <div className="flex items-center gap-4">
+                  <div className="w-11 h-11 rounded-xl bg-primary/15 flex items-center justify-center">
+                    <Bot className="w-5 h-5 text-primary" />
+                  </div>
+                  <div>
+                    <p className="font-semibold">{b.name}</p>
+                    <p className="text-xs text-muted-foreground">{b.timeframe || "—"} · {b.current_version || "v1.0"}</p>
+                  </div>
+                </div>
+                <span className={`text-xs font-semibold px-3 py-1.5 rounded-full ${b.status === "published" ? "bg-green-400/15 text-green-400" : "bg-yellow-400/15 text-yellow-400"}`}>
+                  {b.status === "published" ? "Publicado" : "Borrador"}
+                </span>
+              </Panel>
+            </button>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

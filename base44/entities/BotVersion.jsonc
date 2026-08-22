@@ -1,0 +1,90 @@
+{
+  "name": "BotVersion",
+  "type": "object",
+  "properties": {
+    "product_id": {
+      "type": "string",
+      "description": "ID del Product (bot) al que pertenece esta version"
+    },
+    "version_label": {
+      "type": "string",
+      "description": "Etiqueta de version, ej. v1.0"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "draft",
+        "testing",
+        "passed",
+        "failed",
+        "published",
+        "suspended",
+        "archived"
+      ],
+      "default": "draft",
+      "description": "Estado del ciclo de testing/publicacion"
+    },
+    "config": {
+      "type": "object",
+      "description": "Snapshot de la configuracion del bot para esta version"
+    },
+    "changelog": {
+      "type": "string",
+      "description": "Notas de cambios de la version"
+    },
+    "test_start_date": {
+      "type": "string",
+      "format": "date",
+      "description": "Inicio del periodo de testing"
+    },
+    "test_end_date": {
+      "type": "string",
+      "format": "date",
+      "description": "Fin del periodo de testing"
+    },
+    "test_capital": {
+      "type": "number",
+      "description": "Capital virtual de prueba (USDT)"
+    },
+    "test_trades": {
+      "type": "number",
+      "description": "Cantidad de operaciones registradas en testing"
+    },
+    "test_pnl": {
+      "type": "number",
+      "description": "P&L del periodo de testing (USDT)"
+    },
+    "test_drawdown": {
+      "type": "number",
+      "description": "Drawdown maximo del testing (%)"
+    },
+    "test_win_rate": {
+      "type": "number",
+      "description": "Win rate del testing (%)"
+    },
+    "test_profit_factor": {
+      "type": "number",
+      "description": "Profit factor del testing"
+    },
+    "test_sharpe": {
+      "type": "number",
+      "description": "Sharpe ratio del testing"
+    },
+    "test_errors": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Errores registrados durante testing"
+    },
+    "checklist": {
+      "type": "object",
+      "description": "Checklist de validacion requerido antes de publicar"
+    }
+  },
+  "required": [
+    "product_id",
+    "version_label",
+    "status"
+  ]
+}
