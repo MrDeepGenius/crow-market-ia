@@ -23,6 +23,15 @@ function Stars({ n }) {
   );
 }
 
+function Metric({ label, value, tone = "" }) {
+  return (
+    <div className="rounded-xl bg-background/40 border border-border p-3 text-center">
+      <p className="text-[10px] uppercase text-muted-foreground">{label}</p>
+      <p className={`text-base font-bold ${tone}`}>{value}</p>
+    </div>
+  );
+}
+
 export default function ProductModal({ product, onClose }) {
   const [pay, setPay] = useState(product?.type === "bot" ? "rent" : "buy");
   if (!product) return null;
@@ -74,7 +83,7 @@ export default function ProductModal({ product, onClose }) {
                   </div>
                   <div className="rounded-xl bg-background/50 border border-border p-3 text-center">
                     <p className="text-[10px] uppercase text-muted-foreground">P&L 30d</p>
-                    <p className="text-lg font-bold text-emerald-400">+{product.pnl}%</p>
+                    <p className="text-lg font-bold text-emerald-400">{product.pnl > 0 ? "+" : ""}{product.pnl}%</p>
                   </div>
                   <div className="rounded-xl bg-background/50 border border-border p-3 text-center">
                     <p className="text-[10px] uppercase text-muted-foreground">Mercado</p>
@@ -113,27 +122,37 @@ export default function ProductModal({ product, onClose }) {
 
             {isBot && (
               <TabsContent value="resultados" className="space-y-4 mt-4">
-                <div className="rounded-xl bg-background/50 border border-border p-4">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-xs font-semibold flex items-center gap-1.5"><Activity className="w-4 h-4 text-cyan-400" /> Curva de rendimiento auditada</span>
-                    <span className="text-xs font-bold text-emerald-400 flex items-center gap-1"><TrendingUp className="w-3.5 h-3.5" /> +{product.pnl}%</span>
+                {product.backtest ? (
+                  <>
+                    <div className="rounded-xl bg-background/50 border border-border p-4">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-xs font-semibold flex items-center gap-1.5"><Activity className="w-4 h-4 text-cyan-400" /> Curva de capital (backtest real)</span>
+                        <span className={`text-xs font-bold flex items-center gap-1 ${product.backtest.totalReturn >= 0 ? "text-emerald-400" : "text-rose-400"}`}>
+                          <TrendingUp className="w-3.5 h-3.5" /> {product.backtest.totalReturn >= 0 ? "+" : ""}{product.backtest.totalReturn}%
+                        </span>
+                      </div>
+                      <Sparkline data={product.backtest.equity?.length ? product.backtest.equity : product.curve} color="#22d3ee" height={80} />
+                      <p className="text-[10px] text-muted-foreground mt-2">
+                        {product.backtest.candles} velas · {product.backtest.timeframe} · {product.backtest.durationMs}ms · {product.backtest.symbol}
+                      </p>
+                    </div>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                      <Metric label="Win Rate" value={`${product.backtest.winRate}%`} tone="text-cyan-400" />
+                      <Metric label="Operaciones" value={product.backtest.totalTrades} />
+                      <Metric label="Profit Factor" value={product.backtest.profitFactor} />
+                      <Metric label="Max Drawdown" value={`-${product.backtest.maxDrawdown}%`} tone="text-rose-400" />
+                      <Metric label="Sharpe" value={product.backtest.sharpe} />
+                      <Metric label="Sortino" value={product.backtest.sortino} />
+                      <Metric label="Retorno total" value={`${product.backtest.totalReturn >= 0 ? "+" : ""}${product.backtest.totalReturn}%`} tone={product.backtest.totalReturn >= 0 ? "text-emerald-400" : "text-rose-400"} />
+                      <Metric label="Anualizado" value={`${product.backtest.annualizedReturn >= 0 ? "+" : ""}${product.backtest.annualizedReturn}%`} />
+                      <Metric label="Balance final" value={`${product.backtest.finalBalance} USDT`} />
+                    </div>
+                  </>
+                ) : (
+                  <div className="rounded-xl bg-background/40 border border-border p-6 text-center">
+                    <p className="text-sm text-muted-foreground">Este bot aún no tiene resultados de backtest publicados.</p>
                   </div>
-                  <Sparkline data={product.curve} color="#22d3ee" height={80} />
-                </div>
-                <div className="grid grid-cols-3 gap-3">
-                  <div className="rounded-xl bg-background/40 border border-border p-3 text-center">
-                    <p className="text-[10px] uppercase text-muted-foreground">Max Drawdown</p>
-                    <p className="text-base font-bold text-rose-400">-12.4%</p>
-                  </div>
-                  <div className="rounded-xl bg-background/40 border border-border p-3 text-center">
-                    <p className="text-[10px] uppercase text-muted-foreground">Sharpe</p>
-                    <p className="text-base font-bold">2.1</p>
-                  </div>
-                  <div className="rounded-xl bg-background/40 border border-border p-3 text-center">
-                    <p className="text-[10px] uppercase text-muted-foreground">Operaciones</p>
-                    <p className="text-base font-bold">1,842</p>
-                  </div>
-                </div>
+                )}
               </TabsContent>
             )}
 

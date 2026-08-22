@@ -93,6 +93,7 @@ export default function BotWorkflow({ product, onBack, onChanged }) {
         test_profit_factor: Number(r.profitFactor) || 0,
         test_sharpe: Number(r.sharpe) || 0,
         checklist: cl,
+        backtest: r,
       });
       setVersion(updated);
       onChanged?.();
@@ -145,7 +146,21 @@ export default function BotWorkflow({ product, onBack, onChanged }) {
         });
         landing = res?.data?.landing || res?.landing || null;
       } catch (e) { /* landing opcional */ }
-      await base44.entities.Product.update(product.id, { status: "published", landing: landing || {} });
+      const bt = version.backtest || null;
+      const productBacktest = bt ? {
+        winRate: bt.winRate, totalTrades: bt.totalTrades, winners: bt.winners, losers: bt.losers,
+        profitFactor: bt.profitFactor, maxDrawdown: bt.maxDrawdown, totalReturn: bt.totalReturn,
+        annualizedReturn: bt.annualizedReturn, sharpe: bt.sharpe, sortino: bt.sortino,
+        finalBalance: bt.finalBalance, capital: bt.capital || version.test_capital,
+        equity: bt.equity, timeframe: bt.timeframe, symbol: bt.symbol, candles: bt.candles, durationMs: bt.durationMs,
+      } : null;
+      await base44.entities.Product.update(product.id, {
+        status: "published",
+        landing: landing || {},
+        backtest: productBacktest,
+        winRate: bt ? Number(bt.winRate) || 0 : Number(version.test_win_rate) || 0,
+        pnl: bt ? Number(bt.totalReturn) || 0 : 0,
+      });
       await base44.entities.BotVersion.update(version.id, {
         status: "published",
         checklist: { ...cl, landing_created: true },

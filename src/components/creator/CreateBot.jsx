@@ -54,6 +54,7 @@ async function createBotWithVersion(record, config) {
         test_profit_factor: Number(r.profitFactor) || 0,
         test_sharpe: Number(r.sharpe) || 0,
         checklist: { ...checklist, backtest_run: true },
+        backtest: r,
       });
     }
   } catch (e) { /* backtest best-effort */ }

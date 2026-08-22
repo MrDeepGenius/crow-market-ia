@@ -13,6 +13,14 @@ function round(v, d = 2) {
   const f = 10 ** d;
   return Math.round(v * f) / f;
 }
+function sample(arr, n) {
+  if (!arr.length) return [];
+  if (arr.length <= n) return arr.map((v) => round(v, 2));
+  const out = [];
+  const step = (arr.length - 1) / (n - 1);
+  for (let i = 0; i < n; i++) out.push(round(arr[Math.round(i * step)], 2));
+  return out;
+}
 function periodsPerYearFromTf(tf) {
   const t = String(tf || "").trim().toLowerCase();
   const map = { "1m": 525600, "3m": 175200, "5m": 105120, "15m": 35040, "30m": 17520, "1h": 8760, "4h": 2190, "1d": 365 };
@@ -387,6 +395,8 @@ export function runBacktest({ candles, config = {}, capital = 1000, leverage = 1
     sharpe: round(sharpe, 2),
     sortino: round(sortino, 2),
     finalBalance: round(balance, 2),
+    capital: round(capital, 2),
+    equity: sample(equityCurve, 60),
     trades: trades.slice(-200),
   };
 }

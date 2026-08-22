@@ -80,6 +80,10 @@
     "checklist": {
       "type": "object",
       "description": "Checklist de validacion requerido antes de publicar"
+    },
+    "backtest": {
+      "type": "object",
+      "description": "Snapshot completo del resultado del backtest (metricas + equity + trades)"
     }
   },
   "required": [

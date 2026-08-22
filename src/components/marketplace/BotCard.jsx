@@ -46,8 +46,8 @@ export default function BotCard({ p, i = 0, onOpen }) {
             <span className="text-[10px] uppercase tracking-wider text-muted-foreground flex items-center gap-1">
               <Activity className="w-3 h-3" /> P&L 30d
             </span>
-            <span className="text-xs font-bold text-emerald-400 flex items-center gap-1">
-              <TrendingUp className="w-3 h-3" /> +{p.pnl}%
+            <span className={`text-xs font-bold flex items-center gap-1 ${p.pnl >= 0 ? "text-emerald-400" : "text-rose-400"}`}>
+              <TrendingUp className="w-3 h-3" /> {p.pnl >= 0 ? "+" : ""}{p.pnl}%
             </span>
           </div>
           <Sparkline data={p.curve} color="#22d3ee" height={40} />

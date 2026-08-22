@@ -264,6 +264,7 @@ export function normalizeEntityProduct(p) {
       curve,
       buyPrice: Number(p.buyPrice) || 0,
       rentPrice: Number(p.rentPrice) || 0,
+      backtest: p.backtest || null,
     };
   }
   return {

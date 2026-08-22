@@ -114,6 +114,10 @@
       "type": "object",
       "description": "Contenido de landing page generado por IA"
     },
+    "backtest": {
+      "type": "object",
+      "description": "Snapshot de metricas del backtest al publicar (winRate, totalTrades, profitFactor, maxDrawdown, sharpe, totalReturn, equity, etc.)"
+    },
     "status": {
       "type": "string",
       "enum": [
