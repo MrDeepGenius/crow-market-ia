@@ -35,6 +35,8 @@ export default async function(req) {
       status: "idle",
       position: null,
       stats: { trades: 0, wins: 0, losses: 0, pnl: 0 },
+      locked_until: "1970-01-01T00:00:00.000Z",
+      consecutive_errors: 0,
     });
 
     await base44.asServiceRole.entities.BotLog.create({

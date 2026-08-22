@@ -41,11 +41,12 @@ export async function getAccount({ apiKey, apiSecret }) {
   return signedRequest({ apiKey, apiSecret, method: "GET", path: "/api/v3/account" });
 }
 
-export async function placeOrder({ apiKey, apiSecret, symbol, side, type = "MARKET", quantity, quoteOrderQty, price }) {
+export async function placeOrder({ apiKey, apiSecret, symbol, side, type = "MARKET", quantity, quoteOrderQty, price, newClientOrderId }) {
   const params = { symbol, side, type };
   if (quantity != null) params.quantity = quantity;
   if (quoteOrderQty != null) params.quoteOrderQty = quoteOrderQty;
   if (price != null) params.price = price;
+  if (newClientOrderId != null) params.newClientOrderId = newClientOrderId;
   if (type === "LIMIT") params.timeInForce = "GTC";
   return signedRequest({ apiKey, apiSecret, method: "POST", path: "/api/v3/order", params });
 }

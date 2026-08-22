@@ -1,0 +1,45 @@
+{
+  "definition": {
+    "document": {
+      "dsl": "1.0.0",
+      "name": "bot_engine_tick",
+      "version": "1.0",
+      "namespace": "base44"
+    },
+    "do": [
+      {
+        "run_all": {
+          "call": "invoke_backend_function",
+          "with": {
+            "function_name": "runAllActiveBots",
+            "args": {}
+          },
+          "then": "end",
+          "x-base44": {
+            "title": "Ejecutar bots activos",
+            "description": "Procesa todas las instancias running"
+          }
+        }
+      }
+    ]
+  },
+  "trigger": {
+    "condition": null,
+    "config": {
+      "trigger_type": "scheduled",
+      "events": [],
+      "schedule_mode": "recurring",
+      "cron_expression": "*/5 * * * *",
+      "one_time_date": null,
+      "timezone": "America/Buenos_Aires",
+      "interval_value": null,
+      "interval_unit": null,
+      "interval_anchor": null,
+      "ends_type": "never",
+      "ends_on_date": null,
+      "ends_after_count": null
+    }
+  },
+  "description": "Ejecuta runAllActiveBots cada 5 minutos para procesar todas las BotInstances en estado running (motor server-side, independiente del navegador).",
+  "name": "Bot Engine Tick"
+}

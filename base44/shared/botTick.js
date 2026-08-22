@@ -1,0 +1,274 @@
+// =============================================================================
+// Nucleo compartido del Bot Engine. Una sola evaluacion (tick) de una instancia.
+// Usado por:
+//   - runBotTick (manual / admin, con usuario)
+//   - runAllActiveBots (workflow programado, sin usuario, service role)
+//
+// Garantias:
+//   * Lock atomico por instancia (locked_until) -> no dos ticks simultaneos.
+//   * Idempotencia: BotOrder con client_order_id unico; si hay orden pendiente
+//     sin confirmar, NO se envia otra orden.
+//   * Circuit breaker: consecutive_errors >= 3 -> status = paused.
+//   * Sin conexion Binance = evaluacion solo lectura (NO es error).
+//   * Toda la I/O de entidades usa asServiceRole (funciona sin usuario).
+// =============================================================================
+
+import { fetchKlines } from "./backtest.js";
+import { evaluateSignal } from "./botEngine.js";
+import { placeOrder, toBinanceSymbol } from "./binanceTestnet.js";
+
+const PAST = "1970-01-01T00:00:00.000Z";
+const LOCK_MS = 5 * 60 * 1000;
+const MAX_ERRORS = 3;
+
+function uuidv4() {
+  if (typeof crypto !== "undefined" && crypto.randomUUID) return crypto.randomUUID();
+  return "id-" + Date.now() + "-" + Math.random().toString(36).slice(2, 10);
+}
+
+export async function executeTick({ base44, instance }) {
+  const now = new Date();
+  const nowIso = now.toISOString();
+  const lockUntilIso = new Date(now.getTime() + LOCK_MS).toISOString();
+
+  // --- 1. Adquirir lock atomico ---
+  let lockRes;
+  try {
+    lockRes = await base44.asServiceRole.entities.BotInstance.updateMany(
+      { id: instance.id, status: "running", locked_until: { $lt: nowIso } },
+      { $set: { locked_until: lockUntilIso } }
+    );
+  } catch (e) {
+    return { instance_id: instance.id, skipped: "lock_error", error: e.message };
+  }
+  if (!lockRes || !lockRes.updated) {
+    return { instance_id: instance.id, skipped: "locked" };
+  }
+
+  const log = async (level, message, data = {}) => {
+    try {
+      await base44.asServiceRole.entities.BotLog.create({
+        instance_id: instance.id, user_id: instance.user_id, level, message, data,
+      });
+    } catch (e) {}
+  };
+
+  let errored = false;
+  let errMsg = "";
+  const result = { instance_id: instance.id };
+
+  try {
+    const config = instance.config || {};
+    const symbol = instance.symbol || (Array.isArray(config.assets) ? config.assets[0] : config.pair) || "BTC/USDT";
+    const timeframe = instance.timeframe || config.timeframe || "15m";
+    const binanceSymbol = toBinanceSymbol(symbol);
+    const isFutures = String(config.market || "Spot").toUpperCase().includes("FUTURE");
+
+    await log("info", "Tick iniciado (server)", { symbol, timeframe });
+
+    // --- 2. Idempotencia: orden pendiente sin confirmar? ---
+    let pendingOrder = null;
+    try {
+      const pendings = await base44.asServiceRole.entities.BotOrder.filter(
+        { bot_instance_id: instance.id, status: "pending" }, "-created_date", 5
+      );
+      pendingOrder = (pendings && pendings[0]) || null;
+    } catch (e) {}
+
+    // --- 3. Velas reales ---
+    let candles;
+    try {
+      candles = await fetchKlines(symbol, timeframe, 300);
+    } catch (e) {
+      errored = true; errMsg = "velas: " + e.message;
+      await log("error", "Error obteniendo velas: " + e.message);
+      return result;
+    }
+    if (!candles || candles.length < 60) {
+      await log("warn", "Velas insuficientes para evaluar", { count: candles?.length || 0 });
+      result.skipped = "velas insuficientes";
+      return result;
+    }
+
+    // --- 4. Evaluar estrategia ---
+    const signal = evaluateSignal({ candles, config, currentPosition: instance.position || null });
+    await log("signal", `Senal: ${signal.action} - ${signal.reason}`, {
+      action: signal.action, reason: signal.reason,
+      sl: signal.sl, tp: signal.tp, riskPct: signal.riskPct,
+      ...signal.indicators,
+    });
+    result.signal = { action: signal.action, reason: signal.reason };
+
+    const update = { last_tick: new Date().toISOString() };
+
+    // --- 5. Conexion Binance ---
+    let connection = null;
+    if (instance.connection_id) {
+      try { connection = await base44.asServiceRole.entities.BinanceConnection.get(instance.connection_id); } catch (e) {}
+    }
+
+    // --- 6. Entrada ---
+    if (signal.action === "BUY" || signal.action === "SELL") {
+      if (pendingOrder) {
+        await log("warn", "Orden pendiente sin confirmar, no se envia nueva orden (idempotencia)", {
+          pending_order_id: pendingOrder.id, client_order_id: pendingOrder.client_order_id,
+        });
+      } else if (!connection) {
+        await log("info", "Senal de entrada pero sin conexion Binance: evaluacion sin orden");
+      } else if (instance.position) {
+        await log("warn", "Senal de entrada ignorada: ya hay posicion abierta (anti-duplicado)");
+      } else if (signal.action === "SELL" && !isFutures) {
+        await log("warn", "Short no soportado en Spot testnet");
+      } else {
+        const side = signal.action === "BUY" ? "BUY" : "SELL";
+        const riskPct = Number(signal.riskPct) || 1;
+        const cap = Number(instance.capital) || 100;
+        const notional = Math.max(10, Math.min(cap, cap * riskPct / 100));
+        const clientOrderId = uuidv4();
+        // Registrar orden pendiente ANTES de enviar (idempotencia)
+        let botOrder;
+        try {
+          botOrder = await base44.asServiceRole.entities.BotOrder.create({
+            bot_instance_id: instance.id, user_id: instance.user_id,
+            symbol, side, order_type: "MARKET",
+            quantity: side === "SELL" ? notional : null,
+            requested_price: signal.indicators?.price || null,
+            status: "pending", client_order_id: clientOrderId, intent: "entry",
+          });
+        } catch (e) {
+          errored = true; errMsg = "botorder create: " + e.message;
+          await log("error", "No se pudo registrar orden pendiente: " + e.message);
+          return result;
+        }
+        try {
+          const params = {
+            apiKey: connection.api_key, apiSecret: connection.api_secret,
+            symbol: binanceSymbol, side, type: "MARKET", newClientOrderId: clientOrderId,
+          };
+          if (side === "BUY") params.quoteOrderQty = notional; else params.quantity = notional;
+          const res = await placeOrder(params);
+          if (res.ok && res.data && !res.data.code) {
+            const qty = Number(res.data.executedQty) || 0;
+            const quote = Number(res.data.cummulativeQuoteQty) || 0;
+            const entryPrice = qty ? quote / qty : candles[candles.length - 1].c;
+            await base44.asServiceRole.entities.BotOrder.update(botOrder.id, {
+              status: "filled", exchange_order_id: String(res.data.orderId),
+              executed_price: Math.round(entryPrice * 100) / 100, executed_at: new Date().toISOString(),
+            });
+            update.position = {
+              side: side.toLowerCase(), entryPrice: Math.round(entryPrice * 100) / 100, qty,
+              sl: signal.sl, tp: signal.tp, orderId: String(res.data.orderId),
+              clientOrderId, entryTime: new Date().toISOString(),
+            };
+            await log("order", `Orden ${side} ejecutada en Testnet`, {
+              orderId: res.data.orderId, clientOrderId, qty, entryPrice: update.position.entryPrice, notional,
+            });
+          } else {
+            errored = true; errMsg = "orden rechazada: " + (res.data?.msg || res.data?.code || res.status);
+            await base44.asServiceRole.entities.BotOrder.update(botOrder.id, {
+              status: "rejected", error_message: String(res.data?.msg || res.data?.code || res.status),
+              executed_at: new Date().toISOString(),
+            });
+            await log("error", `Orden rechazada: ${res.data?.msg || res.data?.code || res.status}`);
+          }
+        } catch (e) {
+          errored = true; errMsg = "excepcion orden: " + e.message;
+          await base44.asServiceRole.entities.BotOrder.update(botOrder.id, {
+            status: "error", error_message: e.message, executed_at: new Date().toISOString(),
+          });
+          await log("error", "Excepcion enviando orden: " + e.message);
+        }
+      }
+    }
+    // --- 7. Salida ---
+    else if (signal.action === "EXIT" && instance.position) {
+      if (!connection) {
+        await log("info", "Senal de salida pero sin conexion Binance: no se cierra orden");
+      } else {
+        const pos = instance.position;
+        const exitSide = pos.side === "long" ? "SELL" : "BUY";
+        const clientOrderId = uuidv4();
+        let botOrder;
+        try {
+          botOrder = await base44.asServiceRole.entities.BotOrder.create({
+            bot_instance_id: instance.id, user_id: instance.user_id,
+            symbol, side: exitSide, order_type: "MARKET", quantity: pos.qty,
+            requested_price: signal.indicators?.price || null,
+            status: "pending", client_order_id: clientOrderId, intent: "exit",
+          });
+        } catch (e) {
+          errored = true; errMsg = "botorder exit create: " + e.message;
+          await log("error", "No se pudo registrar orden de cierre: " + e.message);
+          return result;
+        }
+        try {
+          const res = await placeOrder({
+            apiKey: connection.api_key, apiSecret: connection.api_secret,
+            symbol: binanceSymbol, side: exitSide, type: "MARKET",
+            quantity: pos.qty, newClientOrderId: clientOrderId,
+          });
+          if (res.ok && res.data && !res.data.code) {
+            const quote = Number(res.data.cummulativeQuoteQty) || 0;
+            const exitPrice = pos.qty ? quote / pos.qty : candles[candles.length - 1].c;
+            const pnl = pos.side === "long"
+              ? (exitPrice - pos.entryPrice) * pos.qty
+              : (pos.entryPrice - exitPrice) * pos.qty;
+            const stats = instance.stats || { trades: 0, wins: 0, losses: 0, pnl: 0 };
+            stats.trades = (stats.trades || 0) + 1;
+            if (pnl > 0) stats.wins = (stats.wins || 0) + 1; else stats.losses = (stats.losses || 0) + 1;
+            stats.pnl = Math.round(((stats.pnl || 0) + pnl) * 100) / 100;
+            await base44.asServiceRole.entities.BotOrder.update(botOrder.id, {
+              status: "filled", exchange_order_id: String(res.data.orderId),
+              executed_price: Math.round(exitPrice * 100) / 100, executed_at: new Date().toISOString(),
+            });
+            update.position = null;
+            update.stats = stats;
+            await log("order", `Posicion cerrada (${exitSide})`, {
+              orderId: res.data.orderId, clientOrderId, exitPrice: Math.round(exitPrice * 100) / 100,
+              pnl: stats.pnl, reason: signal.reason,
+            });
+          } else {
+            errored = true; errMsg = "cierre rechazado: " + (res.data?.msg || res.data?.code);
+            await base44.asServiceRole.entities.BotOrder.update(botOrder.id, {
+              status: "rejected", error_message: String(res.data?.msg || res.data?.code),
+              executed_at: new Date().toISOString(),
+            });
+            await log("error", `Orden de cierre rechazada: ${res.data?.msg || res.data?.code}`);
+          }
+        } catch (e) {
+          errored = true; errMsg = "excepcion cierre: " + e.message;
+          await base44.asServiceRole.entities.BotOrder.update(botOrder.id, {
+            status: "error", error_message: e.message, executed_at: new Date().toISOString(),
+          });
+          await log("error", "Excepcion cerrando posicion: " + e.message);
+        }
+      }
+    }
+
+    // --- 8. Commit exitoso + liberar lock ---
+    const commit = { ...update, consecutive_errors: 0, locked_until: PAST };
+    await base44.asServiceRole.entities.BotInstance.update(instance.id, commit);
+    result.position = update.position !== undefined ? update.position : instance.position;
+    result.stats = update.stats || instance.stats;
+    return result;
+  } catch (e) {
+    errored = true; errMsg = e.message;
+    try { await log("error", "Excepcion en tick: " + e.message); } catch (ee) {}
+    result.error = e.message;
+    return result;
+  } finally {
+    // --- 9. Circuit breaker + liberar lock en caso de error ---
+    if (errored) {
+      try {
+        const cur = await base44.asServiceRole.entities.BotInstance.get(instance.id);
+        const errs = (cur.consecutive_errors || 0) + 1;
+        const patch = { consecutive_errors: errs, locked_until: PAST, last_error: errMsg };
+        if (errs >= MAX_ERRORS) patch.status = "paused";
+        await base44.asServiceRole.entities.BotInstance.update(instance.id, patch);
+        if (errs >= MAX_ERRORS) {
+          await log("error", `Circuit breaker: bot pausado tras ${errs} errores consecutivos.`);
+        }
+      } catch (e) {}
+    }
+  }
+}

@@ -1,6 +1,6 @@
-import React, { useEffect, useState, useRef } from "react";
+import React, { useEffect, useState } from "react";
 import { base44 } from "@/api/base44Client";
-import { Play, Pause, Square, Zap, Loader2, Bot, TrendingUp, Activity, Link as LinkIcon } from "lucide-react";
+import { Play, Pause, Square, Bot, TrendingUp, Activity, Link as LinkIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "@/components/ui/use-toast";
 
@@ -9,6 +9,7 @@ const STATUS = {
   running: { label: "Ejecutando", color: "bg-green-400/15 text-green-400" },
   paused: { label: "Pausado", color: "bg-yellow-400/15 text-yellow-400" },
   stopped: { label: "Detenido", color: "bg-red-400/15 text-red-400" },
+  error: { label: "Error", color: "bg-red-400/15 text-red-400" },
 };
 
 const LEVEL_COLOR = {
@@ -23,9 +24,7 @@ const LEVEL_COLOR = {
 export default function BotInstanceCard({ instance, connection, onChanged }) {
   const [busy, setBusy] = useState(false);
   const [logs, setLogs] = useState([]);
-  const [ticking, setTicking] = useState(false);
   const [showLogs, setShowLogs] = useState(false);
-  const timerRef = useRef(null);
 
   const loadLogs = async () => {
     try {
@@ -34,35 +33,25 @@ export default function BotInstanceCard({ instance, connection, onChanged }) {
     } catch (e) {}
   };
 
-  const doTick = async (auto = false) => {
-    setTicking(true);
-    try {
-      const res = await base44.functions.invoke("runBotTick", { instanceId: instance.id });
-      const d = res?.data || res;
-      if (d?.error) {
-        if (!auto) toast({ variant: "destructive", title: "Tick fallido", description: d.error });
-      } else {
-        onChanged?.();
-        loadLogs();
-      }
-    } catch (e) {
-      if (!auto) toast({ variant: "destructive", title: "Tick fallido", description: e?.message });
-    } finally { setTicking(false); }
-  };
-
+  // Polling SOLO visual: actualiza logs y estado desde el servidor.
+  // NO ejecuta ticks ni ordenes. El motor corre server-side via workflow.
   useEffect(() => {
     loadLogs();
-    if (instance.status === "running") {
-      timerRef.current = setInterval(() => doTick(true), 20000);
-      return () => clearInterval(timerRef.current);
-    }
+    if (instance.status !== "running") return;
+    const t = setInterval(() => { loadLogs(); onChanged?.(); }, 15000);
+    return () => clearInterval(t);
   }, [instance.id, instance.status]);
 
   const setStatus = async (status) => {
     setBusy(true);
     try {
       const update = { status };
-      if (status === "running" && !instance.started_at) update.started_at = new Date().toISOString();
+      if (status === "running") {
+        if (!instance.started_at) update.started_at = new Date().toISOString();
+        update.locked_until = "1970-01-01T00:00:00.000Z";
+        update.consecutive_errors = 0;
+        update.last_error = "";
+      }
       if (status === "stopped") update.stopped_at = new Date().toISOString();
       await base44.entities.BotInstance.update(instance.id, update);
       toast({ title: `Bot ${STATUS[status].label.toLowerCase()}` });
@@ -120,9 +109,6 @@ export default function BotInstanceCard({ instance, connection, onChanged }) {
         )}
         <Button size="sm" variant="outline" onClick={() => setStatus("stopped")} disabled={busy || instance.status === "stopped"} className="bg-transparent border-border hover:bg-secondary">
           <Square className="w-4 h-4 mr-1" /> STOP
-        </Button>
-        <Button size="sm" variant="outline" onClick={() => doTick(false)} disabled={ticking || instance.status !== "running"} className="bg-transparent border-border hover:bg-secondary">
-          {ticking ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : <Zap className="w-4 h-4 mr-1" />} Evaluar ahora
         </Button>
         <Button size="sm" variant="ghost" onClick={() => { setShowLogs((s) => !s); if (!showLogs) loadLogs(); }} className="text-muted-foreground">
           <Activity className="w-4 h-4 mr-1" /> {showLogs ? "Ocultar logs" : "Ver logs"}
