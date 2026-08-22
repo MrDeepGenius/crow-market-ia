@@ -180,44 +180,41 @@ export async function fetchKlines(asset, timeframe, limit = 1000) {
   const symbol = normalizeSymbol(asset);
   const interval = normalizeInterval(timeframe);
   const cap = Math.max(50, Math.min(limit, 1000));
-  const errors = [];
-  const tryFetch = async (label, url, mapRows) => {
-    try {
-      const ctrl = new AbortController();
-      const to = setTimeout(() => ctrl.abort(), 8000);
-      const res = await fetch(url, { signal: ctrl.signal });
-      clearTimeout(to);
-      if (!res.ok) { errors.push(`${label} ${res.status}`); return null; }
-      const rows = await mapRows(res);
-      if (Array.isArray(rows) && rows.length) return rows;
-      errors.push(`${label} vacio`);
-      return null;
-    } catch (e) { errors.push(`${label} ${e.message || e.name}`); return null; }
-  };
-
-  // Binance
-  let out = await tryFetch("Binance", `https://api.binance.com/api/v3/klines?symbol=${symbol}&interval=${interval}&limit=${cap}`,
-    async (res) => (await res.json()).map((k) => ({ t: Number(k[0]), o: Number(k[1]), h: Number(k[2]), l: Number(k[3]), c: Number(k[4]), v: Number(k[5]) })));
-  if (out) return out;
-
-  // Bybit
-  out = await tryFetch("Bybit", `https://api.bybit.com/v5/market/kline?category=spot&symbol=${symbol}&interval=${bybitInterval(interval)}&limit=${cap}`,
-    async (res) => (await res.json())?.result?.list?.reverse().map((k) => ({ t: Number(k[0]), o: Number(k[1]), h: Number(k[2]), l: Number(k[3]), c: Number(k[4]), v: Number(k[5]) })));
-  if (out) return out;
-
-  // OKX
   const okxSym = String(asset || "BTC/USDT").toUpperCase().replace("/", "-");
-  out = await tryFetch("OKX", `https://www.okx.com/api/v5/market/candles?instId=${okxSym}&bar=${okxBar(interval)}&limit=300`,
-    async (res) => (await res.json())?.data?.reverse().map((k) => ({ t: Number(k[0]), o: Number(k[1]), h: Number(k[2]), l: Number(k[3]), c: Number(k[4]), v: Number(k[5]) })));
-  if (out) return out;
 
-  // Coinbase
-  const cbSym = okxSym;
-  out = await tryFetch("Coinbase", `https://api.exchange.coinbase.com/products/${cbSym}/candles?granularity=${coinbaseGranularity(interval)}`,
-    async (res) => (await res.json()).reverse().map((k) => ({ t: Number(k[0]) * 1000, o: Number(k[3]), h: Number(k[2]), l: Number(k[1]), c: Number(k[4]), v: Number(k[5]) })));
-  if (out) return out;
+  // Todos los proveedores se consultan EN PARALELO: gana el mas rapido que devuelva velas validas.
+  // Evita que un proveedor bloqueado/colgado (Binance/Bybit en algunas regiones) retrase todo el backtest.
+  const providers = [
+    { label: "Binance", url: `https://api.binance.com/api/v3/klines?symbol=${symbol}&interval=${interval}&limit=${cap}`,
+      map: async (res) => (await res.json()).map((k) => ({ t: Number(k[0]), o: Number(k[1]), h: Number(k[2]), l: Number(k[3]), c: Number(k[4]), v: Number(k[5]) })) },
+    { label: "Bybit", url: `https://api.bybit.com/v5/market/kline?category=spot&symbol=${symbol}&interval=${bybitInterval(interval)}&limit=${cap}`,
+      map: async (res) => (await res.json())?.result?.list?.reverse().map((k) => ({ t: Number(k[0]), o: Number(k[1]), h: Number(k[2]), l: Number(k[3]), c: Number(k[4]), v: Number(k[5]) })) },
+    { label: "OKX", url: `https://www.okx.com/api/v5/market/candles?instId=${okxSym}&bar=${okxBar(interval)}&limit=300`,
+      map: async (res) => (await res.json())?.data?.reverse().map((k) => ({ t: Number(k[0]), o: Number(k[1]), h: Number(k[2]), l: Number(k[3]), c: Number(k[4]), v: Number(k[5]) })) },
+    { label: "Coinbase", url: `https://api.exchange.coinbase.com/products/${okxSym}/candles?granularity=${coinbaseGranularity(interval)}`,
+      map: async (res) => (await res.json()).reverse().map((k) => ({ t: Number(k[0]) * 1000, o: Number(k[3]), h: Number(k[2]), l: Number(k[1]), c: Number(k[4]), v: Number(k[5]) })) },
+  ];
 
-  throw new Error("No se pudieron obtener velas reales: " + errors.join(" | "));
+  const tryOne = (p) => new Promise((resolve, reject) => {
+    const ctrl = new AbortController();
+    const to = setTimeout(() => ctrl.abort(), 6000);
+    fetch(p.url, { signal: ctrl.signal })
+      .then(async (res) => {
+        clearTimeout(to);
+        if (!res.ok) return reject(new Error(`${p.label} ${res.status}`));
+        const rows = await p.map(res);
+        if (Array.isArray(rows) && rows.length) return resolve(rows);
+        reject(new Error(`${p.label} vacio`));
+      })
+      .catch((e) => { clearTimeout(to); reject(new Error(`${p.label} ${e.message || e.name}`)); });
+  });
+
+  try {
+    return await Promise.any(providers.map(tryOne));
+  } catch (agg) {
+    const msgs = (agg?.errors || []).map((e) => e?.message || String(e));
+    throw new Error("No se pudieron obtener velas reales: " + (msgs.length ? msgs.join(" | ") : "todos los proveedores fallaron"));
+  }
 }
 
 // ---------- motor de simulacion ----------
