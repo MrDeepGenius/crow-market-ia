@@ -40,14 +40,15 @@
         "idle",
         "running",
         "paused",
-        "stopped"
+        "stopped",
+        "error"
       ],
       "default": "idle",
       "description": "Estado de ejecucion de la instancia"
     },
     "position": {
       "type": "object",
-      "description": "Posicion abierta: side, entryPrice, qty, sl, tp, orderId, entryTime"
+      "description": "Posicion abierta: side, entryPrice, qty, sl, tp, orderId, clientOrderId, entryTime"
     },
     "started_at": {
       "type": "string",
@@ -67,6 +68,21 @@
     "stats": {
       "type": "object",
       "description": "Estadisticas: trades, wins, losses, pnl"
+    },
+    "locked_until": {
+      "type": "string",
+      "format": "date-time",
+      "default": "1970-01-01T00:00:00.000Z",
+      "description": "Lock temporal anti-ejecucion simultanea (expira solo)"
+    },
+    "consecutive_errors": {
+      "type": "number",
+      "default": 0,
+      "description": "Errores consecutivos del motor (circuit breaker)"
+    },
+    "last_error": {
+      "type": "string",
+      "description": "Ultimo mensaje de error registrado por el motor"
     }
   },
   "required": [

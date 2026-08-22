@@ -1,0 +1,92 @@
+{
+  "name": "BotOrder",
+  "type": "object",
+  "properties": {
+    "bot_instance_id": {
+      "type": "string",
+      "description": "ID de la BotInstance que genero la orden"
+    },
+    "user_id": {
+      "type": "string",
+      "description": "ID del usuario dueno de la instancia"
+    },
+    "symbol": {
+      "type": "string",
+      "description": "Par de trading, ej. BTC/USDT"
+    },
+    "side": {
+      "type": "string",
+      "enum": [
+        "BUY",
+        "SELL"
+      ],
+      "description": "Lado de la orden"
+    },
+    "order_type": {
+      "type": "string",
+      "enum": [
+        "MARKET",
+        "LIMIT",
+        "STOP"
+      ],
+      "default": "MARKET",
+      "description": "Tipo de orden"
+    },
+    "quantity": {
+      "type": "number",
+      "description": "Cantidad base (quoteOrderQty para BUY market)"
+    },
+    "requested_price": {
+      "type": "number",
+      "description": "Precio al momento de generar la senal"
+    },
+    "executed_price": {
+      "type": "number",
+      "description": "Precio real de ejecucion (fill)"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "pending",
+        "filled",
+        "rejected",
+        "error",
+        "cancelled"
+      ],
+      "default": "pending",
+      "description": "Estado de la orden"
+    },
+    "exchange_order_id": {
+      "type": "string",
+      "description": "ID de orden devuelto por el exchange"
+    },
+    "client_order_id": {
+      "type": "string",
+      "description": "Identificador unico idempotente (UUID) enviado al exchange"
+    },
+    "intent": {
+      "type": "string",
+      "enum": [
+        "entry",
+        "exit"
+      ],
+      "description": "Era orden de entrada o de salida"
+    },
+    "executed_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Fecha de ejecucion/rechazo"
+    },
+    "error_message": {
+      "type": "string",
+      "description": "Mensaje de error si la orden fallo"
+    }
+  },
+  "required": [
+    "bot_instance_id",
+    "user_id",
+    "symbol",
+    "side",
+    "status"
+  ]
+}
