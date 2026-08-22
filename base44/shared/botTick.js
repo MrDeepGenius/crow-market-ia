@@ -15,7 +15,7 @@
 
 import { fetchKlines } from "./backtest.js";
 import { evaluateSignal } from "./botEngine.js";
-import { placeOrder, toBinanceSymbol } from "./binanceTestnet.js";
+import { executeOrder } from "./executionGateway.js";
 
 const PAST = "1970-01-01T00:00:00.000Z";
 const LOCK_MS = 5 * 60 * 1000;
@@ -61,7 +61,6 @@ export async function executeTick({ base44, instance }) {
     const config = instance.config || {};
     const symbol = instance.symbol || (Array.isArray(config.assets) ? config.assets[0] : config.pair) || "BTC/USDT";
     const timeframe = instance.timeframe || config.timeframe || "15m";
-    const binanceSymbol = toBinanceSymbol(symbol);
     const isFutures = String(config.market || "Spot").toUpperCase().includes("FUTURE");
 
     await log("info", "Tick iniciado (server)", { symbol, timeframe });
@@ -110,147 +109,146 @@ export async function executeTick({ base44, instance }) {
 
     const update = { last_tick: new Date().toISOString() };
 
-    // --- 5. Conexion Binance ---
-    let connection = null;
-    if (instance.connection_id) {
-      try { connection = await base44.asServiceRole.entities.BinanceConnection.get(instance.connection_id); } catch (e) {}
-    }
-
     // --- 6. Entrada ---
     if (signal.action === "BUY" || signal.action === "SELL") {
       if (pendingOrder) {
         await log("warn", "Orden pendiente sin confirmar, no se envia nueva orden (idempotencia)", {
           pending_order_id: pendingOrder.id, client_order_id: pendingOrder.client_order_id,
         });
-      } else if (!connection) {
-        await log("info", "Senal de entrada pero sin conexion Binance: evaluacion sin orden");
       } else if (instance.position) {
         await log("warn", "Senal de entrada ignorada: ya hay posicion abierta (anti-duplicado)");
       } else if (signal.action === "SELL" && !isFutures) {
-        await log("warn", "Short no soportado en Spot testnet");
+        await log("warn", "Short no soportado en Spot");
       } else {
         const side = signal.action === "BUY" ? "BUY" : "SELL";
         const riskPct = Number(signal.riskPct) || 1;
         const cap = Number(instance.capital) || 100;
         const notional = Math.max(10, Math.min(cap, cap * riskPct / 100));
         const clientOrderId = uuidv4();
-        // Registrar orden pendiente ANTES de enviar (idempotencia)
+        const lastPrice = Number(signal.indicators?.price) || candles[candles.length - 1].c;
+        // Order Intent: el engine decide, el gateway ejecuta.
+        const intent = {
+          bot_instance_id: instance.id, user_id: instance.user_id,
+          exchange: isFutures ? "binance_futures_testnet" : "binance_spot_testnet",
+          symbol, side, order_type: "MARKET",
+          quantity: side === "SELL" ? notional : null,
+          quote_order_qty: side === "BUY" ? notional : null,
+          price: null, client_order_id: clientOrderId, intent: "entry",
+        };
+        await log("info", "ORDER_INTENT_CREATED", { intent });
+        // Registrar orden pendiente ANTES de ejecutar (idempotencia)
         let botOrder;
         try {
           botOrder = await base44.asServiceRole.entities.BotOrder.create({
             bot_instance_id: instance.id, user_id: instance.user_id,
             symbol, side, order_type: "MARKET",
             quantity: side === "SELL" ? notional : null,
-            requested_price: signal.indicators?.price || null,
-            status: "pending", client_order_id: clientOrderId, intent: "entry",
+            requested_price: lastPrice, status: "pending",
+            client_order_id: clientOrderId, intent: "entry",
           });
         } catch (e) {
           errored = true; errMsg = "botorder create: " + e.message;
-          await log("error", "No se pudo registrar orden pendiente: " + e.message);
+          await log("error", "EXECUTION_ERROR: No se pudo registrar orden pendiente: " + e.message);
           return result;
         }
         try {
-          const params = {
-            apiKey: connection.api_key, apiSecret: connection.api_secret,
-            symbol: binanceSymbol, side, type: "MARKET", newClientOrderId: clientOrderId,
-          };
-          if (side === "BUY") params.quoteOrderQty = notional; else params.quantity = notional;
-          const res = await placeOrder(params);
-          if (res.ok && res.data && !res.data.code) {
-            const qty = Number(res.data.executedQty) || 0;
-            const quote = Number(res.data.cummulativeQuoteQty) || 0;
-            const entryPrice = qty ? quote / qty : candles[candles.length - 1].c;
+          const res = await executeOrder(intent, { lastPrice });
+          if (res.accepted && res.status === "filled") {
+            const qty = Number(res.executed_quantity) || 0;
+            const entryPrice = Number(res.executed_price) || lastPrice;
             await base44.asServiceRole.entities.BotOrder.update(botOrder.id, {
-              status: "filled", exchange_order_id: String(res.data.orderId),
+              status: "filled", exchange_order_id: String(res.exchange_order_id),
               executed_price: Math.round(entryPrice * 100) / 100, executed_at: new Date().toISOString(),
             });
             update.position = {
               side: side.toLowerCase(), entryPrice: Math.round(entryPrice * 100) / 100, qty,
-              sl: signal.sl, tp: signal.tp, orderId: String(res.data.orderId),
+              sl: signal.sl, tp: signal.tp, orderId: String(res.exchange_order_id),
               clientOrderId, entryTime: new Date().toISOString(),
             };
-            await log("order", `Orden ${side} ejecutada en Testnet`, {
-              orderId: res.data.orderId, clientOrderId, qty, entryPrice: update.position.entryPrice, notional,
+            await log("order", "ORDER_FILLED", {
+              orderId: res.exchange_order_id, clientOrderId, side, qty, entryPrice: update.position.entryPrice, notional, mode: res.mode,
             });
+            await log("info", "POSITION_UPDATED", { position: update.position });
           } else {
-            errored = true; errMsg = "orden rechazada: " + (res.data?.msg || res.data?.code || res.status);
+            errored = true; errMsg = "orden rechazada: " + (res.error || res.status);
             await base44.asServiceRole.entities.BotOrder.update(botOrder.id, {
-              status: "rejected", error_message: String(res.data?.msg || res.data?.code || res.status),
+              status: "rejected", error_message: String(res.error || res.status),
               executed_at: new Date().toISOString(),
             });
-            await log("error", `Orden rechazada: ${res.data?.msg || res.data?.code || res.status}`);
+            await log("error", "EXECUTION_ERROR: Orden rechazada: " + (res.error || res.status));
           }
         } catch (e) {
           errored = true; errMsg = "excepcion orden: " + e.message;
           await base44.asServiceRole.entities.BotOrder.update(botOrder.id, {
             status: "error", error_message: e.message, executed_at: new Date().toISOString(),
           });
-          await log("error", "Excepcion enviando orden: " + e.message);
+          await log("error", "EXECUTION_ERROR: Excepcion enviando orden: " + e.message);
         }
       }
     }
     // --- 7. Salida ---
     else if (signal.action === "EXIT" && instance.position) {
-      if (!connection) {
-        await log("info", "Senal de salida pero sin conexion Binance: no se cierra orden");
-      } else {
-        const pos = instance.position;
-        const exitSide = pos.side === "long" ? "SELL" : "BUY";
-        const clientOrderId = uuidv4();
-        let botOrder;
-        try {
-          botOrder = await base44.asServiceRole.entities.BotOrder.create({
-            bot_instance_id: instance.id, user_id: instance.user_id,
-            symbol, side: exitSide, order_type: "MARKET", quantity: pos.qty,
-            requested_price: signal.indicators?.price || null,
-            status: "pending", client_order_id: clientOrderId, intent: "exit",
-          });
-        } catch (e) {
-          errored = true; errMsg = "botorder exit create: " + e.message;
-          await log("error", "No se pudo registrar orden de cierre: " + e.message);
-          return result;
-        }
-        try {
-          const res = await placeOrder({
-            apiKey: connection.api_key, apiSecret: connection.api_secret,
-            symbol: binanceSymbol, side: exitSide, type: "MARKET",
-            quantity: pos.qty, newClientOrderId: clientOrderId,
-          });
-          if (res.ok && res.data && !res.data.code) {
-            const quote = Number(res.data.cummulativeQuoteQty) || 0;
-            const exitPrice = pos.qty ? quote / pos.qty : candles[candles.length - 1].c;
-            const pnl = pos.side === "long"
-              ? (exitPrice - pos.entryPrice) * pos.qty
-              : (pos.entryPrice - exitPrice) * pos.qty;
-            const stats = instance.stats || { trades: 0, wins: 0, losses: 0, pnl: 0 };
-            stats.trades = (stats.trades || 0) + 1;
-            if (pnl > 0) stats.wins = (stats.wins || 0) + 1; else stats.losses = (stats.losses || 0) + 1;
-            stats.pnl = Math.round(((stats.pnl || 0) + pnl) * 100) / 100;
-            await base44.asServiceRole.entities.BotOrder.update(botOrder.id, {
-              status: "filled", exchange_order_id: String(res.data.orderId),
-              executed_price: Math.round(exitPrice * 100) / 100, executed_at: new Date().toISOString(),
-            });
-            update.position = null;
-            update.stats = stats;
-            await log("order", `Posicion cerrada (${exitSide})`, {
-              orderId: res.data.orderId, clientOrderId, exitPrice: Math.round(exitPrice * 100) / 100,
-              pnl: stats.pnl, reason: signal.reason,
-            });
-          } else {
-            errored = true; errMsg = "cierre rechazado: " + (res.data?.msg || res.data?.code);
-            await base44.asServiceRole.entities.BotOrder.update(botOrder.id, {
-              status: "rejected", error_message: String(res.data?.msg || res.data?.code),
-              executed_at: new Date().toISOString(),
-            });
-            await log("error", `Orden de cierre rechazada: ${res.data?.msg || res.data?.code}`);
-          }
-        } catch (e) {
-          errored = true; errMsg = "excepcion cierre: " + e.message;
+      const pos = instance.position;
+      const exitSide = pos.side === "long" ? "SELL" : "BUY";
+      const clientOrderId = uuidv4();
+      const lastPrice = Number(signal.indicators?.price) || candles[candles.length - 1].c;
+      const intent = {
+        bot_instance_id: instance.id, user_id: instance.user_id,
+        exchange: isFutures ? "binance_futures_testnet" : "binance_spot_testnet",
+        symbol, side: exitSide, order_type: "MARKET",
+        quantity: pos.qty, quote_order_qty: null, price: null,
+        client_order_id: clientOrderId, intent: "exit",
+      };
+      await log("info", "ORDER_INTENT_CREATED", { intent });
+      let botOrder;
+      try {
+        botOrder = await base44.asServiceRole.entities.BotOrder.create({
+          bot_instance_id: instance.id, user_id: instance.user_id,
+          symbol, side: exitSide, order_type: "MARKET", quantity: pos.qty,
+          requested_price: lastPrice, status: "pending",
+          client_order_id: clientOrderId, intent: "exit",
+        });
+      } catch (e) {
+        errored = true; errMsg = "botorder exit create: " + e.message;
+        await log("error", "EXECUTION_ERROR: No se pudo registrar orden de cierre: " + e.message);
+        return result;
+      }
+      try {
+        const res = await executeOrder(intent, { lastPrice });
+        if (res.accepted && res.status === "filled") {
+          const exitPrice = Number(res.executed_price) || lastPrice;
+          const pnl = pos.side === "long"
+            ? (exitPrice - pos.entryPrice) * pos.qty
+            : (pos.entryPrice - exitPrice) * pos.qty;
+          const stats = instance.stats || { trades: 0, wins: 0, losses: 0, pnl: 0 };
+          stats.trades = (stats.trades || 0) + 1;
+          if (pnl > 0) stats.wins = (stats.wins || 0) + 1; else stats.losses = (stats.losses || 0) + 1;
+          stats.pnl = Math.round(((stats.pnl || 0) + pnl) * 100) / 100;
           await base44.asServiceRole.entities.BotOrder.update(botOrder.id, {
-            status: "error", error_message: e.message, executed_at: new Date().toISOString(),
+            status: "filled", exchange_order_id: String(res.exchange_order_id),
+            executed_price: Math.round(exitPrice * 100) / 100, executed_at: new Date().toISOString(),
           });
-          await log("error", "Excepcion cerrando posicion: " + e.message);
+          update.position = null;
+          update.stats = stats;
+          await log("order", "ORDER_FILLED", {
+            orderId: res.exchange_order_id, clientOrderId, side: exitSide, exitPrice: Math.round(exitPrice * 100) / 100,
+            pnl: stats.pnl, reason: signal.reason, mode: res.mode,
+          });
+          await log("info", "POSITION_UPDATED", { position: null, stats });
+        } else {
+          errored = true; errMsg = "cierre rechazado: " + (res.error || res.status);
+          await base44.asServiceRole.entities.BotOrder.update(botOrder.id, {
+            status: "rejected", error_message: String(res.error || res.status),
+            executed_at: new Date().toISOString(),
+          });
+          await log("error", "EXECUTION_ERROR: Orden de cierre rechazada: " + (res.error || res.status));
         }
+      } catch (e) {
+        errored = true; errMsg = "excepcion cierre: " + e.message;
+        await base44.asServiceRole.entities.BotOrder.update(botOrder.id, {
+          status: "error", error_message: e.message, executed_at: new Date().toISOString(),
+        });
+        await log("error", "EXECUTION_ERROR: Excepcion cerrando posicion: " + e.message);
       }
     }
 
