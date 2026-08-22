@@ -12,8 +12,8 @@ import { DEFAULT_PRODUCT_IMAGE } from "@/data/products";
 const BOT_CATEGORY = "Bots de Trading IA";
 const RISK_OPTIONS = ["Bajo", "Medio", "Alto"];
 
-// Crea un Product (bot) en estado borrador + su primera BotVersion (v1.0, draft)
-// con el checklist de validacion inicial. El bot se publica desde el workflow de testing.
+// Crea un Product (bot) en borrador + su primera BotVersion (v1.0) y dispara el
+// backtest automatico con datos reales: el bot entra en backtesting al terminar.
 async function createBotWithVersion(record, config) {
   const product = await base44.entities.Product.create({ ...record, status: "draft", current_version: "v1.0" });
   const checklist = {
@@ -24,7 +24,7 @@ async function createBotWithVersion(record, config) {
     paper_test_run: false,
     security_check: false,
   };
-  await base44.entities.BotVersion.create({
+  const version = await base44.entities.BotVersion.create({
     product_id: product.id,
     version_label: "v1.0",
     status: "draft",
@@ -32,6 +32,31 @@ async function createBotWithVersion(record, config) {
     changelog: "Versión inicial",
     checklist,
   });
+  // Backtest automatico con velas reales (best-effort: si falla, queda en draft).
+  try {
+    const btConfig = { ...(config || record.config || {}) };
+    const res = await base44.functions.invoke("runBacktest", {
+      config: btConfig,
+      capital: 1000,
+      leverage: 1,
+      commission: 0.075,
+    });
+    const r = res?.data || res;
+    if (r && (r.success || r.totalTrades != null) && !r.error) {
+      const pnlUsd = Math.round((Number(r.finalBalance) - 1000) * 100) / 100;
+      await base44.entities.BotVersion.update(version.id, {
+        status: "testing",
+        test_capital: 1000,
+        test_trades: Number(r.totalTrades) || 0,
+        test_pnl: pnlUsd,
+        test_drawdown: Number(r.maxDrawdown) || 0,
+        test_win_rate: Number(r.winRate) || 0,
+        test_profit_factor: Number(r.profitFactor) || 0,
+        test_sharpe: Number(r.sharpe) || 0,
+        checklist: { ...checklist, backtest_run: true },
+      });
+    }
+  } catch (e) { /* backtest best-effort */ }
   return product;
 }
 

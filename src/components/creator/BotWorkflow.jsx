@@ -66,18 +66,42 @@ export default function BotWorkflow({ product, onBack, onChanged }) {
     }
   };
 
-  const startTesting = async () => {
-    const tf = (product.config?.timeframe || "").split(" ")[0];
-    const days = TIMEFRAME_DAYS[tf] || 7;
-    const start = new Date();
-    const end = new Date(Date.now() + days * 86400000);
-    await patchVersion({
-      status: "testing",
-      test_start_date: start.toISOString().slice(0, 10),
-      test_end_date: end.toISOString().slice(0, 10),
-      test_capital: Number(testCapital) || 1000,
-    });
-    toast({ title: "Testing iniciado", description: `Período de ${days} días. Los datos reales llegarán en Fase 2.` });
+  const runBacktestAction = async () => {
+    setBusy(true);
+    try {
+      const cap = Number(testCapital) || 1000;
+      const res = await base44.functions.invoke("runBacktest", {
+        config: product.config || {},
+        capital: cap,
+        leverage: 1,
+        commission: 0.075,
+      });
+      const r = res?.data || res;
+      if (!r || (r.error && r.totalTrades == null)) {
+        toast({ variant: "destructive", title: "Backtest fallido", description: r?.error || "Sin datos históricos." });
+        return;
+      }
+      const pnlUsd = Math.round((Number(r.finalBalance) - cap) * 100) / 100;
+      const cl = { ...(version.checklist || {}), backtest_run: true };
+      const updated = await base44.entities.BotVersion.update(version.id, {
+        status: "testing",
+        test_capital: cap,
+        test_trades: Number(r.totalTrades) || 0,
+        test_pnl: pnlUsd,
+        test_drawdown: Number(r.maxDrawdown) || 0,
+        test_win_rate: Number(r.winRate) || 0,
+        test_profit_factor: Number(r.profitFactor) || 0,
+        test_sharpe: Number(r.sharpe) || 0,
+        checklist: cl,
+      });
+      setVersion(updated);
+      onChanged?.();
+      toast({ title: "Backtest completado", description: `${r.totalTrades} ops · WR ${r.winRate}% · Retorno ${r.totalReturn}% · ${r.durationMs}ms.` });
+    } catch (e) {
+      toast({ variant: "destructive", title: "Backtest fallido", description: e?.message });
+    } finally {
+      setBusy(false);
+    }
   };
 
   const markPassed = async () => { await patchVersion({ status: "passed" }); };
@@ -159,7 +183,7 @@ export default function BotWorkflow({ product, onBack, onChanged }) {
   const daysLeft = version.test_end_date
     ? Math.ceil((new Date(version.test_end_date).getTime() - Date.now()) / 86400000)
     : null;
-  const hasData = Number(version.test_trades) > 0;
+  const hasData = !!version.checklist?.backtest_run || Number(version.test_trades) > 0;
 
   return (
     <div className="space-y-5">
@@ -199,19 +223,22 @@ export default function BotWorkflow({ product, onBack, onChanged }) {
 
         {/* state machine actions */}
         <div className="flex flex-wrap gap-2 mb-4">
+          {(version.status === "draft" || version.status === "testing") && (
+            <div className="flex items-center gap-2">
+              <Label className="text-xs whitespace-nowrap">Capital (USDT)</Label>
+              <Input type="number" value={testCapital} onChange={(e) => setTestCapital(e.target.value)} className="h-9 w-32 bg-secondary/50" />
+            </div>
+          )}
           {version.status === "draft" && (
-            <>
-              <div className="flex items-center gap-2">
-                <Label className="text-xs whitespace-nowrap">Capital virtual</Label>
-                <Input type="number" value={testCapital} onChange={(e) => setTestCapital(e.target.value)} className="h-9 w-32 bg-secondary/50" />
-              </div>
-              <Button onClick={startTesting} disabled={busy} className="h-9">
-                <Play className="w-4 h-4 mr-1" /> Iniciar testing
-              </Button>
-            </>
+            <Button onClick={runBacktestAction} disabled={busy} className="h-9">
+              {busy ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : <Play className="w-4 h-4 mr-1" />} Ejecutar backtest
+            </Button>
           )}
           {version.status === "testing" && (
             <>
+              <Button variant="outline" onClick={runBacktestAction} disabled={busy} className="h-9 bg-transparent border-border hover:bg-secondary">
+                {busy ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : <RefreshCw className="w-4 h-4 mr-1" />} Re-ejecutar backtest
+              </Button>
               <Button onClick={markPassed} disabled={busy} className="h-9 bg-green-500 hover:bg-green-500/90">
                 <CheckCircle2 className="w-4 h-4 mr-1" /> Marcar aprobado
               </Button>
@@ -231,7 +258,7 @@ export default function BotWorkflow({ product, onBack, onChanged }) {
                 <XCircle className="w-4 h-4" /> Testing fallido
               </span>
               <Button variant="outline" onClick={resetTesting} disabled={busy} className="h-9 bg-transparent border-border hover:bg-secondary">
-                <RefreshCw className="w-4 h-4 mr-1" /> Reiniciar testing
+                <RefreshCw className="w-4 h-4 mr-1" /> Reiniciar
               </Button>
             </>
           )}
@@ -255,10 +282,10 @@ export default function BotWorkflow({ product, onBack, onChanged }) {
           <MetricCell label="Profit factor" value={hasData ? version.test_profit_factor : "Esperando datos"} />
           <MetricCell label="Sharpe" value={hasData ? version.test_sharpe : "Esperando datos"} />
         </div>
-        <div className="mt-3 flex items-start gap-2 p-3 rounded-xl bg-yellow-400/5 border border-yellow-400/15">
-          <AlertTriangle className="w-4 h-4 text-yellow-400 mt-0.5 shrink-0" />
+        <div className="mt-3 flex items-start gap-2 p-3 rounded-xl bg-emerald-400/5 border border-emerald-400/15">
+          <ShieldCheck className="w-4 h-4 text-emerald-400 mt-0.5 shrink-0" />
           <p className="text-xs text-muted-foreground">
-            Las métricas reales de backtesting y paper trading se completarán en Fase 2. Mientras tanto, el estado se avanza manualmente.
+            El backtest corre sobre hasta 1.000 velas reales (Binance/Bybit) en memoria, en menos de 2 s. Revisá las métricas antes de aprobar y publicar.
           </p>
         </div>
       </div>
