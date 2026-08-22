@@ -84,7 +84,7 @@ export default function BotInstanceCard({ instance, connection, onChanged }) {
       {!hasConnection && (
         <div className="mt-3 flex items-center gap-2 p-3 rounded-xl bg-yellow-400/5 border border-yellow-400/15 text-xs text-muted-foreground">
           <LinkIcon className="w-3.5 h-3.5 text-yellow-400 shrink-0" />
-          Conectá tu cuenta Binance Testnet para poder ejecutar órdenes.
+          Sin conexión Binance: el bot evalúa señales en modo lectura (no envía órdenes). Conectá tu cuenta para ejecución real.
         </div>
       )}
 
@@ -99,7 +99,7 @@ export default function BotInstanceCard({ instance, connection, onChanged }) {
       {/* Controles */}
       <div className="mt-4 flex flex-wrap gap-2">
         {instance.status !== "running" ? (
-          <Button size="sm" onClick={() => setStatus("running")} disabled={busy || !hasConnection} className="bg-green-500 hover:bg-green-500/90">
+          <Button size="sm" onClick={() => setStatus("running")} disabled={busy} className="bg-green-500 hover:bg-green-500/90">
             <Play className="w-4 h-4 mr-1" /> PLAY
           </Button>
         ) : (

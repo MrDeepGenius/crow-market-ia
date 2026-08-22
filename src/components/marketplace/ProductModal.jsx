@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Star, ShieldCheck, Check, TrendingUp, Activity, Gauge, PlayCircle } from "lucide-react";
 import Sparkline from "@/components/marketplace/Sparkline";
 import PaymentLink from "@/components/marketplace/PaymentLink";
+import AcquireButton from "@/components/marketplace/AcquireButton";
 
 const riskTone = {
   Bajo: "text-emerald-400 bg-emerald-400/10 border-emerald-400/30",
@@ -195,6 +196,11 @@ export default function ProductModal({ product, onClose }) {
               </div>
             )}
             <PaymentLink product={product} mode={isBot ? pay : "buy"} price={price} />
+            {isBot && (
+              <div className="mt-3">
+                <AcquireButton product={product} />
+              </div>
+            )}
           </div>
         </div>
       </DialogContent>
